@@ -139,7 +139,7 @@ const AddUser = ({ userToEdit = null, onSave }) => {
         // Kiểm tra CCCD trùng (chỉ khi thêm mới và có nhập CCCD)
         if (!userToEdit && formData.cccd) {
             try {
-                const cccdCheck = await axios.get(`http://localhost:5000/api/admin/search-by-cccd?cccd=${formData.cccd}`, {
+                const cccdCheck = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/search-by-cccd?cccd=${formData.cccd}`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 // Nếu API trả về 200 OK và có dữ liệu, nghĩa là CCCD đã tồn tại
@@ -164,7 +164,7 @@ const AddUser = ({ userToEdit = null, onSave }) => {
             .map((v) => unformatLicensePlate(v.licensePlate));
 
         for (const licensePlate of validVehicles) {
-            const vehicleCheck = await axios.get(`http://localhost:5000/api/admin/vehicles`, {
+            const vehicleCheck = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/vehicles`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const existingVehicle = vehicleCheck.data.vehicles.find(
@@ -210,8 +210,8 @@ const AddUser = ({ userToEdit = null, onSave }) => {
 
       const token = localStorage.getItem('adminToken');
       const url = userToEdit
-        ? `http://localhost:5000/api/admin/update-user/${formData.cccd}`
-        : 'http://localhost:5000/api/admin/add-user';
+        ? `${process.env.REACT_APP_API_URL}/api/admin/update-user/${formData.cccd}`
+        : '${process.env.REACT_APP_API_URL}/api/admin/add-user';
       const method = userToEdit ? 'put' : 'post';
 
       const formattedData = {

@@ -50,7 +50,7 @@ const VehicleList = () => {
 
       // Nếu searchTerm là số CCCD (12 chữ số), gọi API /search-by-cccd
       if (currentSearchTerm && /^\d{12}$/.test(currentSearchTerm)) {
-        response = await axios.get('http://localhost:5000/api/admin/search-by-cccd', {
+        response = await axios.get('${process.env.REACT_APP_API_URL}/api/admin/search-by-cccd', {
           params: { cccd: currentSearchTerm },
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -59,7 +59,7 @@ const VehicleList = () => {
         const params = {};
         if (statusFilter) params.status = encodeURIComponent(statusFilter);
         if (currentSearchTerm) params.cccd = currentSearchTerm; // Hỗ trợ tìm kiếm bằng CCCD hoặc khác
-        response = await axios.get('http://localhost:5000/api/admin/vehicles', {
+        response = await axios.get('${process.env.REACT_APP_API_URL}/api/admin/vehicles', {
           params,
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -85,7 +85,7 @@ const VehicleList = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
-      const response = await axios.get('http://localhost:5000/api/admin/search-by-cccd', {
+      const response = await axios.get('${process.env.REACT_APP_API_URL}/api/admin/search-by-cccd', {
         params: { cccd },
         headers: { Authorization: `Bearer ${token}` },
       });
