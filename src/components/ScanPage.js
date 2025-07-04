@@ -108,6 +108,9 @@ const ScanPage = () => {
     }
   };
 
+  // =================================================================
+  // HÀM ĐÃ ĐƯỢC SỬA LỖI - KHÔNG CẦN ĐĂNG NHẬP
+  // =================================================================
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       toast.error('Vui lòng nhập số CCCD hoặc họ tên để tìm kiếm.');
@@ -119,77 +122,27 @@ const ScanPage = () => {
     setUserInfo(null);
 
     try {
-      // Kiểm tra xem searchQuery có phải là CCCD (chỉ chứa số, độ dài 12)
-      const isCCCD = /^\d{12}$/.test(searchQuery);
-      if (isCCCD) {
-        const response = await axios.get(`http://localhost:5000/api/admin/search-by-cccd?cccd=${searchQuery}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
-        });
-        if (response.data.vehicles && response.data.vehicles.length > 0) {
-          // Chuyển đổi dữ liệu từ /search-by-cccd sang định dạng tương thích với /scan
-          const userData = response.data.vehicles[0];
-          setUserInfo({
-            user: {
-              cccd: userData.cccd,
-              fullName: userData.fullName,
-              dateOfBirth: userData.dateOfBirth,
-              gender: userData.gender || 'Khác',
-              hometown: userData.hometown,
-              issueDate: userData.issueDate,
-              vehicles: response.data.vehicles.map((v) => ({
-                licensePlate: v.licensePlate,
-                vehicleType: v.vehicleType,
-                status: v.status,
-                lastTransaction: v.timestamp ? { action: v.status === 'Đang gửi' ? 'Gửi' : 'Lấy', timestamp: v.timestamp } : null,
-              })),
-            },
-          });
-          toast.success('Tìm kiếm thành công!');
-        } else {
-          setError('Không tìm thấy người dùng với CCCD này.');
-          toast.error('Không tìm thấy người dùng với CCCD này.');
-        }
-      } else {
-        // Tìm kiếm theo họ tên
-        const response = await axios.get('http://localhost:5000/api/admin/vehicles', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
-        });
-        const users = response.data.vehicles;
-        const filteredUsers = users.filter((user) =>
-          user.fullName.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-        if (filteredUsers.length > 0) {
-          const userData = filteredUsers[0];
-          setUserInfo({
-            user: {
-              cccd: userData.cccd,
-              fullName: userData.fullName,
-              dateOfBirth: userData.dateOfBirth,
-              gender: userData.gender || 'Khác',
-              hometown: userData.hometown,
-              issueDate: userData.issueDate,
-              vehicles: filteredUsers.map((u) => ({
-                licensePlate: u.licensePlate,
-                vehicleType: u.vehicleType,
-                status: u.status,
-                lastTransaction: u.timestamp ? { action: u.status === 'Đang gửi' ? 'Gửi' : 'Lấy', timestamp: u.timestamp } : null,
-              })),
-            },
-          });
-          toast.success('Tìm kiếm thành công!');
-        } else {
-          setError('Không tìm thấy người dùng với họ tên này.');
-          toast.error('Không tìm thấy người dùng với họ tên này.');
-        }
-      }
+      // Gọi đến API công khai mới, không cần token
+      const response = await axios.get(`http://localhost:5000/api/search`, {
+        params: { query: searchQuery }
+      });
+
+      // API trả về trực tiếp đối tượng user, nên ta chỉ cần lấy nó
+      setUserInfo(response.data);
+      toast.success('Tìm kiếm thành công!');
+
     } catch (err) {
+      // Bắt lỗi và hiển thị thông báo
       const errorMessage = err.response?.data?.error || 'Lỗi khi tìm kiếm';
       setError(errorMessage);
       toast.error(errorMessage);
+      setUserInfo(null); // Xóa thông tin người dùng cũ nếu có lỗi
     } finally {
       setIsLoading(false);
     }
   };
+  // =================================================================
+
 
   const handleAction = async (action, licensePlate) => {
     if (!userInfo?.user?.cccd || !licensePlate) return;
