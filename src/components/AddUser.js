@@ -3,7 +3,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 
-// --- Các hàm tiện ích (không thay đổi) ---
+// --- Các hàm tiện ích ---
 const formatLicensePlate = (plate) => {
   if (!plate) return '';
   const cleanPlate = plate.replace(/[-.]/g, '').toUpperCase();
@@ -40,7 +40,7 @@ const AddUser = ({ userToEdit = null, onSave }) => {
     gender: '',
     hometown: '',
     issueDate: '',
-    vehicles: [{ licensePlate: '', vehicleType: '' }],
+    vehicles: [{ licensePlate: '', vehicleType: '', status: 'Đã lấy' }],
   });
   const [isScanning, setIsScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -62,7 +62,8 @@ const AddUser = ({ userToEdit = null, onSave }) => {
           ...v,
           licensePlate: formatLicensePlate(v.licensePlate),
           vehicleType: v.vehicleType || getVehicleType(v.licensePlate),
-        })) || [{ licensePlate: '', vehicleType: '' }],
+          status: v.status || 'Đã lấy',
+        })) || [{ licensePlate: '', vehicleType: '', status: 'Đã lấy' }],
       });
     }
   }, [userToEdit]);
@@ -130,57 +131,49 @@ const AddUser = ({ userToEdit = null, onSave }) => {
     };
   }, [isScanning]);
 
-  // =================================================================
-  // HÀM ĐÃ ĐƯỢC SỬA LỖI
-  // =================================================================
+  // Kiểm tra trùng lặp
   const checkDuplicates = async () => {
     const token = localStorage.getItem('adminToken');
     try {
-        // Kiểm tra CCCD trùng (chỉ khi thêm mới và có nhập CCCD)
-        if (!userToEdit && formData.cccd) {
-            try {
-                const cccdCheck = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/search-by-cccd?cccd=${formData.cccd}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                // Nếu API trả về 200 OK và có dữ liệu, nghĩa là CCCD đã tồn tại
-                if (cccdCheck.data && cccdCheck.data.vehicles.length > 0) {
-                    return `CCCD ${formData.cccd} đã được đăng ký trong hệ thống.`;
-                }
-            } catch (err) {
-                // Xử lý CỤ THỂ lỗi 404
-                if (err.response && err.response.status === 404) {
-                    // Đây là trường hợp MONG MUỐN khi thêm mới: CCCD chưa tồn tại.
-                    // Không làm gì cả và để code tiếp tục chạy xuống phần kiểm tra biển số.
-                } else {
-                    // Nếu là một lỗi khác (500, network error, etc.), thì mới báo lỗi
-                    throw err; // Ném lỗi ra ngoài để khối catch bên ngoài xử lý
-                }
-            }
+      // Kiểm tra CCCD trùng (chỉ khi thêm mới và có nhập CCCD)
+      if (!userToEdit && formData.cccd) {
+        try {
+          const cccdCheck = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/search-by-cccd?cccd=${formData.cccd}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (cccdCheck.data && cccdCheck.data.vehicles.length > 0) {
+            return `CCCD ${formData.cccd} đã được đăng ký trong hệ thống.`;
+          }
+        } catch (err) {
+          if (err.response && err.response.status === 404) {
+            // CCCD chưa tồn tại, tiếp tục kiểm tra biển số
+          } else {
+            throw err;
+          }
         }
+      }
 
-        // Kiểm tra biển số xe trùng
-        const validVehicles = formData.vehicles
-            .filter((v) => v.licensePlate.trim() !== '')
-            .map((v) => unformatLicensePlate(v.licensePlate));
+      // Kiểm tra biển số xe trùng
+      const validVehicles = formData.vehicles
+        .filter((v) => v.licensePlate.trim() !== '')
+        .map((v) => unformatLicensePlate(v.licensePlate));
 
-        for (const licensePlate of validVehicles) {
-            const vehicleCheck = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/vehicles`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const existingVehicle = vehicleCheck.data.vehicles.find(
-                (v) => v.licensePlate === licensePlate && v.cccd !== formData.cccd
-            );
-            if (existingVehicle) {
-                return `Biển số xe ${formatLicensePlate(licensePlate)} đã được đăng ký cho CCCD ${existingVehicle.cccd}.`;
-            }
+      for (const licensePlate of validVehicles) {
+        const vehicleCheck = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/vehicles`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const existingVehicle = vehicleCheck.data.vehicles.find(
+          (v) => v.licensePlate === licensePlate && v.cccd !== formData.cccd
+        );
+        if (existingVehicle) {
+          return `Biển số xe ${formatLicensePlate(licensePlate)} đã được đăng ký cho CCCD ${existingVehicle.cccd}.`;
         }
-        return null; // Không có lỗi trùng lặp
+      }
+      return null; // Không có lỗi trùng lặp
     } catch (err) {
-        // Khối catch này giờ chỉ bắt các lỗi thực sự
-        return err.response?.data?.error || 'Lỗi khi kiểm tra trùng lặp.';
+      return err.response?.data?.error || 'Lỗi khi kiểm tra trùng lặp.';
     }
   };
-  // =================================================================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -200,6 +193,7 @@ const AddUser = ({ userToEdit = null, onSave }) => {
         .map((v) => ({
           licensePlate: unformatLicensePlate(v.licensePlate),
           vehicleType: v.vehicleType || getVehicleType(v.licensePlate),
+          status: v.status || 'Đã lấy',
         }));
 
       if (validVehicles.length === 0) {
@@ -238,8 +232,13 @@ const AddUser = ({ userToEdit = null, onSave }) => {
     const { name, value } = e.target;
     if (name.startsWith('vehicles')) {
       const newVehicles = [...formData.vehicles];
-      newVehicles[index].licensePlate = value;
-      newVehicles[index].vehicleType = getVehicleType(value);
+      const field = name.split('.')[2]; // Lấy tên trường (licensePlate hoặc status)
+      if (field === 'licensePlate') {
+        newVehicles[index].licensePlate = value;
+        newVehicles[index].vehicleType = getVehicleType(value);
+      } else if (field === 'status') {
+        newVehicles[index].status = value;
+      }
       setFormData({ ...formData, vehicles: newVehicles });
     } else {
       setFormData({ ...formData, [name]: value });
@@ -249,7 +248,7 @@ const AddUser = ({ userToEdit = null, onSave }) => {
   const addVehicle = () => {
     setFormData({
       ...formData,
-      vehicles: [...formData.vehicles, { licensePlate: '', vehicleType: '' }],
+      vehicles: [...formData.vehicles, { licensePlate: '', vehicleType: '', status: 'Đã lấy' }],
     });
   };
 
@@ -262,14 +261,13 @@ const AddUser = ({ userToEdit = null, onSave }) => {
     }
   };
 
-  // --- JSX (Không thay đổi) ---
   return (
     <div className="bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
       <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">
         {userToEdit ? 'Cập nhật người dùng' : 'Thêm người dùng'}
       </h2>
-      
+
       <div className="mb-6">
         <div id="qr-reader-add" style={{ display: isScanning ? 'block' : 'none' }}></div>
         <button
@@ -390,6 +388,18 @@ const AddUser = ({ userToEdit = null, onSave }) => {
                   className="mt-1 w-full p-2 border rounded-lg bg-gray-100"
                   readOnly
                 />
+              </div>
+              <div className="flex-grow">
+                <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
+                <select
+                  name={`vehicles.${index}.status`}
+                  value={vehicle.status || 'Đã lấy'}
+                  onChange={(e) => handleChange(e, index)}
+                  className="mt-1 w-full p-2 border rounded-lg focus:ring-primary focus:border-primary"
+                >
+                  <option value="Đã lấy">Đã lấy</option>
+                  <option value="Đang gửi">Đang gửi</option>
+                </select>
               </div>
               {formData.vehicles.length > 1 && (
                 <button
