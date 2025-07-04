@@ -29,7 +29,7 @@ const Statistics = () => {
       const params = {};
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
-      const response = await axios.get('${process.env.REACT_APP_API_URL}/api/admin/statistics', {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/statistics`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });

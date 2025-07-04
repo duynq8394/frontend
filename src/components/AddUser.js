@@ -211,7 +211,7 @@ const AddUser = ({ userToEdit = null, onSave }) => {
       const token = localStorage.getItem('adminToken');
       const url = userToEdit
         ? `${process.env.REACT_APP_API_URL}/api/admin/update-user/${formData.cccd}`
-        : '${process.env.REACT_APP_API_URL}/api/admin/add-user';
+        : `${process.env.REACT_APP_API_URL}/api/admin/add-user`;
       const method = userToEdit ? 'put' : 'post';
 
       const formattedData = {

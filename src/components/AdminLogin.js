@@ -14,7 +14,8 @@ const AdminLogin = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const response = await axios.post('${process.env.REACT_APP_API_URL}/api/admin/login', {
+      const newLocal = `${process.env.REACT_APP_API_URL}/api/admin/login`;
+      const response = await axios.post(newLocal, {
         username,
         password,
       });

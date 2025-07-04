@@ -95,7 +95,7 @@ const ScanPage = () => {
     setIsLoading(true);
     setUserInfo(null);
     try {
-      const response = await axios.post('${process.env.REACT_APP_API_URL}/api/scan', { qrString });
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/scan`, { qrString });
       setUserInfo(response.data);
       setError('');
     } catch (err) {
@@ -148,7 +148,7 @@ const ScanPage = () => {
     if (!userInfo?.user?.cccd || !licensePlate) return;
     setIsLoading(true);
     try {
-      const response = await axios.post('${process.env.REACT_APP_API_URL}/api/action', {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/action`, {
         cccd: userInfo.user.cccd,
         licensePlate,
         action,
