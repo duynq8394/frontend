@@ -12,6 +12,8 @@ const ScanPage = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isTorchSupported, setIsTorchSupported] = useState(false); // Trạng thái hỗ trợ đèn flash
+  const [isTorchOn, setIsTorchOn] = useState(false); // Trạng thái đèn flash (bật/tắt)
   const html5QrCodeRef = useRef(null);
   const isStoppingRef = useRef(false);
 
@@ -19,6 +21,18 @@ const ScanPage = () => {
     if (!html5QrCodeRef.current) {
       html5QrCodeRef.current = new Html5Qrcode('qr-reader');
     }
+
+    // Kiểm tra khả năng đèn flash khi khởi tạo
+    const checkTorchSupport = async () => {
+      try {
+        const capabilities = await html5QrCodeRef.current.getCameraCapabilities();
+        setIsTorchSupported(capabilities.torch || false);
+      } catch (err) {
+        console.error('Không thể kiểm tra khả năng đèn flash:', err);
+      }
+    };
+
+    checkTorchSupport();
 
     return () => {
       if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
@@ -69,6 +83,7 @@ const ScanPage = () => {
         isStoppingRef.current = true;
         try {
           await html5QrCodeRef.current.stop();
+          setIsTorchOn(false); // Tắt trạng thái đèn flash khi dừng quét
         } catch (err) {
           console.error('Lỗi khi dừng quét:', err);
         } finally {
@@ -83,6 +98,29 @@ const ScanPage = () => {
       stopScanner();
     }
   }, [isScanning]);
+
+  // Hàm xử lý bật/tắt đèn flash
+  const toggleTorch = async () => {
+    if (!isTorchSupported || !html5QrCodeRef.current?.isScanning) {
+      toast.error('Thiết bị không hỗ trợ đèn flash hoặc camera chưa được khởi động.');
+      return;
+    }
+
+    try {
+      if (isTorchOn) {
+        await html5QrCodeRef.current.turnTorchOff();
+        setIsTorchOn(false);
+        toast.success('Đã tắt đèn flash.');
+      } else {
+        await html5QrCodeRef.current.turnTorchOn();
+        setIsTorchOn(true);
+        toast.success('Đã bật đèn flash.');
+      }
+    } catch (err) {
+      console.error('Lỗi khi điều khiển đèn flash:', err);
+      toast.error('Không thể điều khiển đèn flash.');
+    }
+  };
 
   const handleScanSuccess = async (decodedText) => {
     setIsScanning(false);
@@ -108,9 +146,6 @@ const ScanPage = () => {
     }
   };
 
-  // =================================================================
-  // HÀM ĐÃ ĐƯỢC SỬA LỖI - KHÔNG CẦN ĐĂNG NHẬP
-  // =================================================================
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       toast.error('Vui lòng nhập số CCCD hoặc họ tên để tìm kiếm.');
@@ -122,27 +157,20 @@ const ScanPage = () => {
     setUserInfo(null);
 
     try {
-      // Gọi đến API công khai mới, không cần token
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/search`, {
         params: { query: searchQuery }
       });
-
-      // API trả về trực tiếp đối tượng user, nên ta chỉ cần lấy nó
       setUserInfo(response.data);
       toast.success('Tìm kiếm thành công!');
-
     } catch (err) {
-      // Bắt lỗi và hiển thị thông báo
       const errorMessage = err.response?.data?.error || 'Lỗi khi tìm kiếm';
       setError(errorMessage);
       toast.error(errorMessage);
-      setUserInfo(null); // Xóa thông tin người dùng cũ nếu có lỗi
+      setUserInfo(null);
     } finally {
       setIsLoading(false);
     }
   };
-  // =================================================================
-
 
   const handleAction = async (action, licensePlate) => {
     if (!userInfo?.user?.cccd || !licensePlate) return;
@@ -181,6 +209,7 @@ const ScanPage = () => {
       setError('');
       setQrData(null);
       setSearchQuery('');
+      setIsTorchOn(false); // Đặt lại trạng thái đèn flash khi bắt đầu quét
     }
     setIsScanning(!isScanning);
   };
@@ -220,15 +249,28 @@ const ScanPage = () => {
             </svg>
           </div>
         )}
-        <button
-          onClick={toggleScan}
-          disabled={isLoading}
-          className={`w-full py-3 rounded-lg text-white font-medium transition-colors ${
-            isScanning ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-blue-700'
-          } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {isScanning ? 'Dừng quét' : 'Bắt đầu quét'}
-        </button>
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={toggleScan}
+            disabled={isLoading}
+            className={`flex-1 py-3 rounded-lg text-white font-medium transition-colors ${
+              isScanning ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-blue-700'
+            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {isScanning ? 'Dừng quét' : 'Bắt đầu quét'}
+          </button>
+          {isScanning && isTorchSupported && (
+            <button
+              onClick={toggleTorch}
+              disabled={isLoading}
+              className={`py-3 px-4 rounded-lg text-white font-medium transition-colors ${
+                isTorchOn ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {isTorchOn ? 'Tắt Flash' : 'Bật Flash'}
+            </button>
+          )}
+        </div>
       </div>
       {error && (
         <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-lg text-center">
