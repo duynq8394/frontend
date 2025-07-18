@@ -40,18 +40,16 @@ const AddUser = ({ userToEdit = null, onSave }) => {
     gender: '',
     hometown: '',
     issueDate: '',
-    vehicles: [{ licensePlate: '', vehicleType: '', status: 'Đã lấy' }],
+    vehicles: [{ licensePlate: '', vehicleType: '', color: '', brand: '', status: 'Đã lấy' }],
   });
   const [isScanning, setIsScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const html5QrCodeRef = useRef(null);
 
-  // Khởi tạo instance chỉ một lần khi component mount
   useEffect(() => {
     html5QrCodeRef.current = new Html5Qrcode('qr-reader-add');
   }, []);
 
-  // Cập nhật formData khi chỉnh sửa người dùng
   useEffect(() => {
     if (userToEdit) {
       setFormData({
@@ -62,13 +60,14 @@ const AddUser = ({ userToEdit = null, onSave }) => {
           ...v,
           licensePlate: formatLicensePlate(v.licensePlate),
           vehicleType: v.vehicleType || getVehicleType(v.licensePlate),
+          color: v.color || '', // Thêm trường color
+          brand: v.brand || '', // Thêm trường brand
           status: v.status || 'Đã lấy',
-        })) || [{ licensePlate: '', vehicleType: '', status: 'Đã lấy' }],
+        })) || [{ licensePlate: '', vehicleType: '', color: '', brand: '', status: 'Đã lấy' }],
       });
     }
   }, [userToEdit]);
 
-  // Quản lý quét QR
   useEffect(() => {
     const qrCodeScanner = html5QrCodeRef.current;
     if (!qrCodeScanner) return;
@@ -92,7 +91,7 @@ const AddUser = ({ userToEdit = null, onSave }) => {
               issueDate,
             }));
             toast.success('Quét CCCD thành công!');
-            setIsScanning(false); // Dừng quét ngay sau khi thành công
+            setIsScanning(false);
           },
           (errorMessage) => {
             if (!errorMessage.includes('NotFoundException')) {
@@ -109,7 +108,7 @@ const AddUser = ({ userToEdit = null, onSave }) => {
     };
 
     const stopScanning = async () => {
-      if (qrCodeScanner && qrCodeScanner.getState() === 2) { // 2 = SCANNING_STATE
+      if (qrCodeScanner && qrCodeScanner.getState() === 2) {
         try {
           await qrCodeScanner.stop();
           setIsLoading(false);
@@ -131,11 +130,9 @@ const AddUser = ({ userToEdit = null, onSave }) => {
     };
   }, [isScanning]);
 
-  // Kiểm tra trùng lặp
   const checkDuplicates = async () => {
     const token = localStorage.getItem('adminToken');
     try {
-      // Kiểm tra CCCD trùng (chỉ khi thêm mới và có nhập CCCD)
       if (!userToEdit && formData.cccd) {
         try {
           const cccdCheck = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/search-by-cccd?cccd=${formData.cccd}`, {
@@ -153,7 +150,6 @@ const AddUser = ({ userToEdit = null, onSave }) => {
         }
       }
 
-      // Kiểm tra biển số xe trùng
       const validVehicles = formData.vehicles
         .filter((v) => v.licensePlate.trim() !== '')
         .map((v) => unformatLicensePlate(v.licensePlate));
@@ -169,7 +165,7 @@ const AddUser = ({ userToEdit = null, onSave }) => {
           return `Biển số xe ${formatLicensePlate(licensePlate)} đã được đăng ký cho CCCD ${existingVehicle.cccd}.`;
         }
       }
-      return null; // Không có lỗi trùng lặp
+      return null;
     } catch (err) {
       return err.response?.data?.error || 'Lỗi khi kiểm tra trùng lặp.';
     }
@@ -179,7 +175,6 @@ const AddUser = ({ userToEdit = null, onSave }) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Kiểm tra trùng lặp trước khi gửi
       const duplicateError = await checkDuplicates();
       if (duplicateError) {
         toast.error(duplicateError);
@@ -187,12 +182,13 @@ const AddUser = ({ userToEdit = null, onSave }) => {
         return;
       }
 
-      // Kiểm tra và lọc các xe hợp lệ
       const validVehicles = formData.vehicles
         .filter((v) => v.licensePlate.trim() !== '')
         .map((v) => ({
           licensePlate: unformatLicensePlate(v.licensePlate),
           vehicleType: v.vehicleType || getVehicleType(v.licensePlate),
+          color: v.color?.trim() || '', // Thêm trường color
+          brand: v.brand?.trim() || '', // Thêm trường brand
           status: v.status || 'Đã lấy',
         }));
 
@@ -232,12 +228,16 @@ const AddUser = ({ userToEdit = null, onSave }) => {
     const { name, value } = e.target;
     if (name.startsWith('vehicles')) {
       const newVehicles = [...formData.vehicles];
-      const field = name.split('.')[2]; // Lấy tên trường (licensePlate hoặc status)
+      const field = name.split('.')[2];
       if (field === 'licensePlate') {
         newVehicles[index].licensePlate = value;
         newVehicles[index].vehicleType = getVehicleType(value);
       } else if (field === 'status') {
         newVehicles[index].status = value;
+      } else if (field === 'color') { // Thêm xử lý trường color
+        newVehicles[index].color = value;
+      } else if (field === 'brand') { // Thêm xử lý trường brand
+        newVehicles[index].brand = value;
       }
       setFormData({ ...formData, vehicles: newVehicles });
     } else {
@@ -248,7 +248,7 @@ const AddUser = ({ userToEdit = null, onSave }) => {
   const addVehicle = () => {
     setFormData({
       ...formData,
-      vehicles: [...formData.vehicles, { licensePlate: '', vehicleType: '', status: 'Đã lấy' }],
+      vehicles: [...formData.vehicles, { licensePlate: '', vehicleType: '', color: '', brand: '', status: 'Đã lấy' }],
     });
   };
 
@@ -368,8 +368,8 @@ const AddUser = ({ userToEdit = null, onSave }) => {
 
         <div className="space-y-4 mb-6">
           {formData.vehicles.map((vehicle, index) => (
-            <div key={index} className="flex items-end gap-2 p-3 border rounded-lg">
-              <div className="flex-grow">
+            <div key={index} className="flex flex-wrap items-end gap-2 p-3 border rounded-lg">
+              <div className="flex-grow min-w-[150px]">
                 <label className="block text-sm font-medium text-gray-700">Biển số xe</label>
                 <input
                   type="text"
@@ -380,7 +380,7 @@ const AddUser = ({ userToEdit = null, onSave }) => {
                   required
                 />
               </div>
-              <div className="flex-grow">
+              <div className="flex-grow min-w-[150px]">
                 <label className="block text-sm font-medium text-gray-700">Loại xe</label>
                 <input
                   type="text"
@@ -389,7 +389,27 @@ const AddUser = ({ userToEdit = null, onSave }) => {
                   readOnly
                 />
               </div>
-              <div className="flex-grow">
+              <div className="flex-grow min-w-[150px]">
+                <label className="block text-sm font-medium text-gray-700">Màu xe</label>
+                <input
+                  type="text"
+                  name={`vehicles.${index}.color`}
+                  value={vehicle.color}
+                  onChange={(e) => handleChange(e, index)}
+                  className="mt-1 w-full p-2 border rounded-lg focus:ring-primary focus:border-primary"
+                />
+              </div>
+              <div className="flex-grow min-w-[150px]">
+                <label className="block text-sm font-medium text-gray-700">Nhãn hiệu</label>
+                <input
+                  type="text"
+                  name={`vehicles.${index}.brand`}
+                  value={vehicle.brand}
+                  onChange={(e) => handleChange(e, index)}
+                  className="mt-1 w-full p-2 border rounded-lg focus:ring-primary focus:border-primary"
+                />
+              </div>
+              <div className="flex-grow min-w-[150px]">
                 <label className="block text-sm font-medium text-gray-700">Trạng thái</label>
                 <select
                   name={`vehicles.${index}.status`}
