@@ -3,20 +3,15 @@ import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import AddUser from './AddUser';
 
-// Hàm định dạng biển số xe
 const formatLicensePlate = (plate) => {
   if (!plate) return '';
   const cleanPlate = plate.replace(/[-.]/g, '').toUpperCase();
-
-  // Biển xe máy điện
   if (cleanPlate.includes('MĐ')) {
     const match = cleanPlate.match(/^(\d{2}MĐ\d)(\d{3})(\d{2})$/);
     if (match) {
       return `${match[1]}-${match[2]}.${match[3]}`;
     }
   }
-
-  // Biển xe máy
   if (cleanPlate.length === 8) {
     return `${cleanPlate.slice(0, 4)}-${cleanPlate.slice(4)}`;
   }
@@ -26,7 +21,6 @@ const formatLicensePlate = (plate) => {
       return `${match[1]}-${match[2]}.${match[3]}`;
     }
   }
-
   return plate;
 };
 
@@ -48,17 +42,15 @@ const VehicleList = () => {
       const token = localStorage.getItem('adminToken');
       let response;
 
-      // Nếu searchTerm là số CCCD (12 chữ số), gọi API /search-by-cccd
       if (currentSearchTerm && /^\d{12}$/.test(currentSearchTerm)) {
         response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/search-by-cccd`, {
           params: { cccd: currentSearchTerm },
           headers: { Authorization: `Bearer ${token}` },
         });
       } else {
-        // Gọi API /vehicles với tìm kiếm chung
         const params = {};
         if (statusFilter) params.status = encodeURIComponent(statusFilter);
-        if (currentSearchTerm) params.cccd = currentSearchTerm; // Hỗ trợ tìm kiếm bằng CCCD hoặc khác
+        if (currentSearchTerm) params.cccd = currentSearchTerm;
         response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/vehicles`, {
           params,
           headers: { Authorization: `Bearer ${token}` },
@@ -99,6 +91,8 @@ const VehicleList = () => {
         vehicles: response.data.vehicles.map(v => ({
           licensePlate: v.licensePlate,
           vehicleType: v.vehicleType,
+          color: v.color || '', // Thêm trường color
+          brand: v.brand || '', // Thêm trường brand
           status: v.status,
           lastTransaction: v.timestamp ? { action: v.status === 'Đang gửi' ? 'Gửi' : 'Lấy', timestamp: v.timestamp } : null,
         })),
@@ -178,6 +172,8 @@ const VehicleList = () => {
                 <th className="p-2 text-left">CCCD</th>
                 <th className="p-2 text-left">Họ tên</th>
                 <th className="p-2 text-left">Loại xe</th>
+                <th className="p-2 text-left">Màu xe</th>
+                <th className="p-2 text-left">Nhãn hiệu</th>
                 <th className="p-2 text-left">Trạng thái</th>
                 <th className="p-2 text-left">Số ngày gửi</th>
                 <th className="p-2 text-left">Hành động</th>
@@ -190,6 +186,8 @@ const VehicleList = () => {
                   <td className="p-2">{vehicle.cccd}</td>
                   <td className="p-2">{vehicle.fullName}</td>
                   <td className="p-2">{vehicle.vehicleType || 'Chưa xác định'}</td>
+                  <td className="p-2">{vehicle.color || 'Chưa xác định'}</td>
+                  <td className="p-2">{vehicle.brand || 'Chưa xác định'}</td>
                   <td className="p-2">{vehicle.status}</td>
                   <td className="p-2">{vehicle.status === 'Đang gửi' ? calculateDaysParked(vehicle.timestamp) : 'N/A'}</td>
                   <td className="p-2">
