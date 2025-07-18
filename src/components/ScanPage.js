@@ -4,6 +4,7 @@ import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import UserInfo from './UserInfo';
+import { useNavigate } from 'react-router-dom'; // Added for navigation
 
 const ScanPage = () => {
   const [qrData, setQrData] = useState(null);
@@ -12,17 +13,35 @@ const ScanPage = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isTorchSupported, setIsTorchSupported] = useState(false); // Trạng thái hỗ trợ đèn flash
-  const [isTorchOn, setIsTorchOn] = useState(false); // Trạng thái đèn flash (bật/tắt)
+  const [isTorchSupported, setIsTorchSupported] = useState(false);
+  const [isTorchOn, setIsTorchOn] = useState(false);
+  const [parkedVehicleCount, setParkedVehicleCount] = useState(0); // Added for vehicle count
   const html5QrCodeRef = useRef(null);
   const isStoppingRef = useRef(false);
+  const navigate = useNavigate(); // Added for navigation
 
   useEffect(() => {
     if (!html5QrCodeRef.current) {
       html5QrCodeRef.current = new Html5Qrcode('qr-reader');
     }
 
-    // Kiểm tra khả năng đèn flash khi khởi tạo
+    // Fetch parked vehicle count on component mount
+    const fetchParkedVehicleCount = async () => {
+      try {
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/vehicles`, {
+          params: { status: 'Đang gửi' },
+          headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` }
+        });
+        setParkedVehicleCount(response.data.total);
+      } catch (err) {
+        console.error('Error fetching parked vehicle count:', err);
+        setParkedVehicleCount(0); // Fallback to 0 if error occurs
+      }
+    };
+
+    fetchParkedVehicleCount();
+
+    // Check torch support
     const checkTorchSupport = async () => {
       try {
         const capabilities = await html5QrCodeRef.current.getCameraCapabilities();
@@ -83,7 +102,7 @@ const ScanPage = () => {
         isStoppingRef.current = true;
         try {
           await html5QrCodeRef.current.stop();
-          setIsTorchOn(false); // Tắt trạng thái đèn flash khi dừng quét
+          setIsTorchOn(false);
         } catch (err) {
           console.error('Lỗi khi dừng quét:', err);
         } finally {
@@ -99,7 +118,6 @@ const ScanPage = () => {
     }
   }, [isScanning]);
 
-  // Hàm xử lý bật/tắt đèn flash
   const toggleTorch = async () => {
     if (!isTorchSupported || !html5QrCodeRef.current?.isScanning) {
       toast.error('Thiết bị không hỗ trợ đèn flash hoặc camera chưa được khởi động.');
@@ -192,6 +210,12 @@ const ScanPage = () => {
           ),
         },
       });
+      // Update parked vehicle count after action
+      const countResponse = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/vehicles`, {
+        params: { status: 'Đang gửi' },
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` }
+      });
+      setParkedVehicleCount(countResponse.data.total);
       setError('');
       toast.success(`${action} xe thành công!`);
     } catch (err) {
@@ -209,15 +233,24 @@ const ScanPage = () => {
       setError('');
       setQrData(null);
       setSearchQuery('');
-      setIsTorchOn(false); // Đặt lại trạng thái đèn flash khi bắt đầu quét
+      setIsTorchOn(false);
     }
     setIsScanning(!isScanning);
+  };
+
+  // Handle Admin button click
+  const handleAdminAccess = () => {
+    navigate('/admin');
   };
 
   return (
     <div className="container mx-auto p-6 max-w-lg">
       <h1 className="text-3xl font-bold text-primary mb-6 text-center">Quét CCCD hoặc Tìm kiếm</h1>
       <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
+        {/* Parked Vehicle Counter */}
+        <div className="mb-4 text-center">
+          <p className="text-lg font-semibold">Số xe đang gửi: {parkedVehicleCount}</p>
+        </div>
         <div className="flex gap-2 mb-4">
           <input
             type="text"
@@ -270,6 +303,12 @@ const ScanPage = () => {
               {isTorchOn ? 'Tắt Flash' : 'Bật Flash'}
             </button>
           )}
+          <button
+            onClick={handleAdminAccess}
+            className="py-3 px-4 rounded-lg text-white font-medium bg-blue-500 hover:bg-blue-600 transition-colors"
+          >
+            Truy cập Admin
+          </button>
         </div>
       </div>
       {error && (
