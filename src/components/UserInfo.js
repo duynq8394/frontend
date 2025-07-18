@@ -1,19 +1,14 @@
 import React from 'react';
 
-// Hàm định dạng biển số xe
 const formatLicensePlate = (plate) => {
   if (!plate) return '';
   const cleanPlate = plate.replace(/[-.]/g, '').toUpperCase();
-
-  // Biển xe máy điện
   if (cleanPlate.includes('MĐ')) {
     const match = cleanPlate.match(/^(\d{2}MĐ\d)(\d{3})(\d{2})$/);
     if (match) {
       return `${match[1]}-${match[2]}.${match[3]}`;
     }
   }
-
-  // Biển xe máy
   if (cleanPlate.length === 8) {
     return `${cleanPlate.slice(0, 4)}-${cleanPlate.slice(4)}`;
   }
@@ -23,11 +18,9 @@ const formatLicensePlate = (plate) => {
       return `${match[1]}-${match[2]}.${match[3]}`;
     }
   }
-
   return plate;
 };
 
-// Hàm xác định loại xe
 const getVehicleType = (plate) => {
   if (!plate) return 'Chưa xác định';
   return plate.includes('MĐ') ? 'Xe máy điện' : 'Xe máy';
@@ -56,6 +49,8 @@ const UserInfo = ({ userInfo, onAction, isLoading }) => {
             </p>
             <div className="grid grid-cols-2 gap-2">
               <p><span className="font-medium">Loại xe:</span> {vehicle.vehicleType || getVehicleType(vehicle.licensePlate)}</p>
+              <p><span className="font-medium">Màu xe:</span> {vehicle.color || 'Chưa xác định'}</p>
+              <p><span className="font-medium">Nhãn hiệu:</span> {vehicle.brand || 'Chưa xác định'}</p>
               <p><span className="font-medium">Trạng thái:</span> {vehicle.status}</p>
             </div>
             {vehicle.lastTransaction && (
