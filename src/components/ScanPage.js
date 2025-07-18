@@ -240,7 +240,7 @@ const ScanPage = () => {
 
   // Handle Admin button click
   const handleAdminAccess = () => {
-    navigate('/admin');
+    navigate('/admin/login');
   };
 
   return (
@@ -307,7 +307,7 @@ const ScanPage = () => {
             onClick={handleAdminAccess}
             className="py-3 px-4 rounded-lg text-white font-medium bg-blue-500 hover:bg-blue-600 transition-colors"
           >
-            Truy cập Admin
+             Quản Lý
           </button>
         </div>
       </div>
