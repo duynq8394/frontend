@@ -31,6 +31,7 @@ const VehicleList = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [editingUser, setEditingUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSearched, setIsSearched] = useState(false); // Track if a search or show all has been performed
 
   const fetchVehicles = async (currentSearchTerm = '') => {
     setIsLoading(true);
@@ -46,9 +47,11 @@ const VehicleList = () => {
       });
 
       setVehicles(response.data.vehicles);
+      setIsSearched(true); // Mark that a fetch has been performed
     } catch (err) {
       toast.error(err.response?.data?.error || 'Lỗi khi lấy danh sách xe');
       setVehicles([]);
+      setIsSearched(true); // Still mark as searched to show empty state
     } finally {
       setIsLoading(false);
     }
@@ -63,6 +66,7 @@ const VehicleList = () => {
     if (!searchTerm.trim()) {
       toast.error('Vui lòng nhập CCCD để tìm kiếm.');
       setVehicles([]);
+      setIsSearched(false);
       return;
     }
     fetchVehicles(searchTerm);
@@ -70,6 +74,15 @@ const VehicleList = () => {
 
   const handleShowAll = () => {
     fetchVehicles(''); // Fetch all vehicles without a search term
+  };
+
+  const handleStatusFilterChange = (e) => {
+    const newStatus = e.target.value;
+    setStatusFilter(newStatus);
+    if (isSearched) {
+      // Only re-fetch if a search or show all has been performed
+      fetchVehicles(searchTerm);
+    }
   };
 
   const handleEdit = async (cccd) => {
@@ -146,7 +159,7 @@ const VehicleList = () => {
         </form>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={handleStatusFilterChange}
           className="p-2 border rounded-lg focus:ring-primary focus:border-primary"
         >
           <option value="">Tất cả trạng thái</option>
@@ -172,9 +185,13 @@ const VehicleList = () => {
             />
           </svg>
         </div>
-      ) : vehicles.length === 0 ? (
+      ) : !isSearched ? (
         <div className="text-center p-4 text-gray-500">
           Nhập CCCD và nhấn Tìm hoặc nhấn Hiển thị tất cả để xem danh sách xe.
+        </div>
+      ) : vehicles.length === 0 ? (
+        <div className="text-center p-4 text-gray-500">
+          Không tìm thấy xe phù hợp với bộ lọc.
         </div>
       ) : (
         <div className="overflow-x-auto">
