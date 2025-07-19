@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
 import AddUser from './AddUser';
@@ -32,33 +32,23 @@ const VehicleList = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetchVehicles();
-  }, [statusFilter]);
-
   const fetchVehicles = async (currentSearchTerm = searchTerm) => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
-      let response;
+      const params = {};
+      if (statusFilter) params.status = encodeURIComponent(statusFilter);
+      if (currentSearchTerm) params.cccd = currentSearchTerm;
 
-      if (currentSearchTerm && /^\d{12}$/.test(currentSearchTerm)) {
-        response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/search-by-cccd`, {
-          params: { cccd: currentSearchTerm },
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } else {
-        const params = {};
-        if (statusFilter) params.status = encodeURIComponent(statusFilter);
-        if (currentSearchTerm) params.cccd = currentSearchTerm;
-        response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/vehicles`, {
-          params,
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/vehicles`, {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
       setVehicles(response.data.vehicles);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Lỗi khi lấy danh sách xe');
+      setVehicles([]); // Clear vehicles on error
     } finally {
       setIsLoading(false);
     }
@@ -70,6 +60,11 @@ const VehicleList = () => {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
+    if (!searchTerm.trim()) {
+      toast.error('Vui lòng nhập CCCD để tìm kiếm.');
+      setVehicles([]);
+      return;
+    }
     fetchVehicles(searchTerm);
   };
 
@@ -88,11 +83,11 @@ const VehicleList = () => {
         dateOfBirth: response.data.vehicles[0]?.dateOfBirth,
         issueDate: response.data.vehicles[0]?.issueDate,
         gender: response.data.vehicles[0]?.gender || 'Nam',
-        vehicles: response.data.vehicles.map(v => ({
+        vehicles: response.data.vehicles.map((v) => ({
           licensePlate: v.licensePlate,
           vehicleType: v.vehicleType,
-          color: v.color || '', // Thêm trường color
-          brand: v.brand || '', // Thêm trường brand
+          color: v.color || '',
+          brand: v.brand || '',
           status: v.status,
           lastTransaction: v.timestamp ? { action: v.status === 'Đang gửi' ? 'Gửi' : 'Lấy', timestamp: v.timestamp } : null,
         })),
@@ -160,8 +155,16 @@ const VehicleList = () => {
         <div className="flex justify-center p-8">
           <svg className="animate-spin h-8 w-8 text-primary" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
           </svg>
+        </div>
+      ) : vehicles.length === 0 ? (
+        <div className="text-center p-4 text-gray-500">
+          Nhập CCCD và nhấn Tìm để hiển thị danh sách xe.
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -204,11 +207,16 @@ const VehicleList = () => {
           </table>
         </div>
       )}
-      
+
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
           <div className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-3xl relative max-h-full overflow-y-auto">
-            <button onClick={handleCloseModal} className="absolute top-2 right-4 text-gray-500 hover:text-gray-800 text-3xl font-bold">&times;</button>
+            <button
+              onClick={handleCloseModal}
+              className="absolute top-2 right-4 text-gray-500 hover:text-gray-800 text-3xl font-bold"
+            >
+              ×
+            </button>
             <AddUser userToEdit={editingUser} onSave={handleSave} />
           </div>
         </div>
