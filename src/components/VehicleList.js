@@ -32,7 +32,7 @@ const VehicleList = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const fetchVehicles = async (currentSearchTerm = searchTerm) => {
+  const fetchVehicles = async (currentSearchTerm = '') => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
@@ -48,7 +48,7 @@ const VehicleList = () => {
       setVehicles(response.data.vehicles);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Lỗi khi lấy danh sách xe');
-      setVehicles([]); // Clear vehicles on error
+      setVehicles([]);
     } finally {
       setIsLoading(false);
     }
@@ -66,6 +66,10 @@ const VehicleList = () => {
       return;
     }
     fetchVehicles(searchTerm);
+  };
+
+  const handleShowAll = () => {
+    fetchVehicles(''); // Fetch all vehicles without a search term
   };
 
   const handleEdit = async (cccd) => {
@@ -104,7 +108,7 @@ const VehicleList = () => {
   const handleSave = () => {
     setIsModalOpen(false);
     setEditingUser(null);
-    fetchVehicles();
+    fetchVehicles(searchTerm); // Re-fetch with current search term to update list
   };
 
   const handleCloseModal = () => {
@@ -149,6 +153,12 @@ const VehicleList = () => {
           <option value="Đang gửi">Đang gửi</option>
           <option value="Đã lấy">Đã lấy</option>
         </select>
+        <button
+          onClick={handleShowAll}
+          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+        >
+          Hiển thị tất cả
+        </button>
       </div>
 
       {isLoading ? (
@@ -164,7 +174,7 @@ const VehicleList = () => {
         </div>
       ) : vehicles.length === 0 ? (
         <div className="text-center p-4 text-gray-500">
-          Nhập CCCD và nhấn Tìm để hiển thị danh sách xe.
+          Nhập CCCD và nhấn Tìm hoặc nhấn Hiển thị tất cả để xem danh sách xe.
         </div>
       ) : (
         <div className="overflow-x-auto">
