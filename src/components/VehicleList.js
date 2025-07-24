@@ -33,13 +33,13 @@ const VehicleList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSearched, setIsSearched] = useState(false); // Track if a search or show all has been performed
 
-  const fetchVehicles = async (currentSearchTerm = '') => {
+  const fetchVehicles = async (currentSearchTerm = '', currentStatusFilter = statusFilter) => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
       const params = {};
-      if (statusFilter) params.status = encodeURIComponent(statusFilter);
-      if (currentSearchTerm) params.cccd = currentSearchTerm;
+      if (currentStatusFilter) params.status = encodeURIComponent(currentStatusFilter);
+      if (currentSearchTerm) params.query = currentSearchTerm; // Sử dụng query thay vì cccd
 
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/vehicles`, {
         params,
@@ -64,7 +64,7 @@ const VehicleList = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (!searchTerm.trim()) {
-      toast.error('Vui lòng nhập CCCD để tìm kiếm.');
+      toast.error('Vui lòng nhập CCCD hoặc biển số xe để tìm kiếm.');
       setVehicles([]);
       setIsSearched(false);
       return;
@@ -79,9 +79,9 @@ const VehicleList = () => {
   const handleStatusFilterChange = (e) => {
     const newStatus = e.target.value;
     setStatusFilter(newStatus);
-    if (isSearched) {
-      // Only re-fetch if a search or show all has been performed
-      fetchVehicles(searchTerm);
+    if (isSearched || searchTerm) {
+      // Re-fetch with current search term and new status filter
+      fetchVehicles(searchTerm, newStatus);
     }
   };
 
@@ -147,7 +147,7 @@ const VehicleList = () => {
             type="text"
             value={searchTerm}
             onChange={handleSearchChange}
-            placeholder="Tìm theo CCCD..."
+            placeholder="Tìm theo CCCD hoặc biển số xe..."
             className="w-full p-2 border rounded-lg focus:ring-primary focus:border-primary"
           />
           <button
@@ -187,7 +187,7 @@ const VehicleList = () => {
         </div>
       ) : !isSearched ? (
         <div className="text-center p-4 text-gray-500">
-          Nhập CCCD và nhấn Tìm hoặc nhấn Hiển thị tất cả để xem danh sách xe.
+          Nhập CCCD hoặc biển số xe và nhấn Tìm hoặc nhấn Hiển thị tất cả để xem danh sách xe.
         </div>
       ) : vehicles.length === 0 ? (
         <div className="text-center p-4 text-gray-500">
