@@ -1,59 +1,95 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
+import Fuse from 'fuse.js';
 import AddUser from './AddUser';
+import 'react-toastify/dist/ReactToastify.css';
 
 const formatLicensePlate = (plate) => {
   if (!plate) return '';
   const cleanPlate = plate.replace(/[-.]/g, '').toUpperCase();
   if (cleanPlate.includes('MĐ')) {
     const match = cleanPlate.match(/^(\d{2}MĐ\d)(\d{3})(\d{2})$/);
-    if (match) {
-      return `${match[1]}-${match[2]}.${match[3]}`;
-    }
+    if (match) return `${match[1]}-${match[2]}.${match[3]}`;
   }
-  if (cleanPlate.length === 8) {
-    return `${cleanPlate.slice(0, 4)}-${cleanPlate.slice(4)}`;
-  }
+  if (cleanPlate.length === 8) return `${cleanPlate.slice(0, 4)}-${cleanPlate.slice(4)}`;
   if (cleanPlate.length === 9) {
     const match = cleanPlate.match(/^(\d{2}[A-Z]\d?)(\d{3})(\d{2})$/);
-    if (match) {
-      return `${match[1]}-${match[2]}.${match[3]}`;
-    }
+    if (match) return `${match[1]}-${match[2]}.${match[3]}`;
   }
   return plate;
 };
 
 const VehicleList = () => {
   const [vehicles, setVehicles] = useState([]);
+  const [filteredVehicles, setFilteredVehicles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchType, setSearchType] = useState('cccd'); // Mặc định tìm kiếm theo CCCD
   const [statusFilter, setStatusFilter] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [sortBy, setSortBy] = useState('licensePlate');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [page, setPage] = useState(1);
+  const [itemsPerPage] = useState(25);
+  const [isSearched, setIsSearched] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSearched, setIsSearched] = useState(false);
 
-  const fetchVehicles = async (currentSearchTerm = '', currentSearchType = 'cccd') => {
+  // Cấu hình Fuse.js
+  const fuseOptions = {
+    keys: ['cccd', 'licensePlate', 'fullName'],
+    threshold: 0.4, // Độ nhạy của tìm kiếm fuzzy (0.0: chính xác hoàn toàn, 1.0: rất lỏng lẻo)
+    ignoreLocation: true, // Bỏ qua vị trí chuỗi
+    includeScore: true,
+  };
+
+  useEffect(() => {
+    // Lọc và sắp xếp khi có thay đổi
+    let result = [...vehicles];
+    
+    // Lọc theo trạng thái
+    if (statusFilter) {
+      result = result.filter((v) => v.status === statusFilter);
+    }
+
+    // Tìm kiếm với Fuse.js
+    if (searchTerm.trim()) {
+      const fuse = new Fuse(result, fuseOptions);
+      result = fuse.search(searchTerm).map(({ item }) => item);
+    }
+
+    // Sắp xếp
+    result.sort((a, b) => {
+      let valueA = a[sortBy] || '';
+      let valueB = b[sortBy] || '';
+      if (sortBy === 'timestamp') {
+        valueA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        valueB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      }
+      if (typeof valueA === 'string') valueA = valueA.toLowerCase();
+      if (typeof valueB === 'string') valueB = valueB.toLowerCase();
+      if (sortOrder === 'asc') {
+        return valueA > valueB ? 1 : -1;
+      } else {
+        return valueA < valueB ? 1 : -1;
+      }
+    });
+
+    setFilteredVehicles(result);
+  }, [vehicles, searchTerm, statusFilter, sortBy, sortOrder]);
+
+  const fetchVehicles = async () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
-      const params = {};
-      if (currentSearchTerm) {
-        params[currentSearchType] = currentSearchTerm; // Sử dụng searchType (cccd hoặc licensePlate)
-      }
-
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/vehicles`, {
-        params,
         headers: { Authorization: `Bearer ${token}` },
       });
-
       setVehicles(response.data.vehicles);
       setIsSearched(true);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Lỗi khi lấy danh sách xe');
       setVehicles([]);
+      setFilteredVehicles([]);
       setIsSearched(true);
     } finally {
       setIsLoading(false);
@@ -62,67 +98,41 @@ const VehicleList = () => {
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-  };
-
-  const handleSearchTypeChange = (e) => {
-    setSearchType(e.target.value);
-    setSearchTerm(''); // Reset search term khi thay đổi loại tìm kiếm
-    setVehicles([]);
-    setIsSearched(false);
+    setPage(1);
   };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (!searchTerm.trim()) {
-      toast.error('Vui lòng nhập thông tin để tìm kiếm.');
-      setVehicles([]);
-      setIsSearched(false);
+    if (!searchTerm.trim() && !isSearched) {
+      toast.error('Vui lòng nhập CCCD, biển số hoặc họ tên để tìm kiếm.');
       return;
     }
-    fetchVehicles(searchTerm, searchType);
+    setPage(1);
   };
 
   const handleShowAll = () => {
-    fetchVehicles('', searchType);
+    setSearchTerm('');
+    setStatusFilter('');
+    setPage(1);
+    fetchVehicles();
   };
-
-  // Lọc trạng thái trực tiếp trên client-side
-  const filteredVehicles = useMemo(() => {
-    if (!statusFilter) return vehicles;
-    return vehicles.filter((vehicle) => vehicle.status === statusFilter);
-  }, [vehicles, statusFilter]);
 
   const handleStatusFilterChange = (e) => {
     setStatusFilter(e.target.value);
+    setPage(1);
   };
 
-  // Hàm sắp xếp
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
+  const handleSort = (column) => {
+    const newSortOrder = sortBy === column && sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortBy(column);
+    setSortOrder(newSortOrder);
+    setPage(1);
   };
 
-  const sortedVehicles = useMemo(() => {
-    if (!sortConfig.key) return filteredVehicles;
-    return [...filteredVehicles].sort((a, b) => {
-      const aValue = a[sortConfig.key] || '';
-      const bValue = b[sortConfig.key] || '';
-      if (sortConfig.key === 'timestamp') {
-        const aTime = a.lastTransaction?.timestamp ? new Date(a.lastTransaction.timestamp) : new Date(0);
-        const bTime = b.lastTransaction?.timestamp ? new Date(b.lastTransaction.timestamp) : new Date(0);
-        return sortConfig.direction === 'asc' ? aTime - bTime : bTime - aTime;
-      }
-      if (typeof aValue === 'string') {
-        return sortConfig.direction === 'asc'
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-      return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
-    });
-  }, [filteredVehicles, sortConfig]);
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > Math.ceil(filteredVehicles.length / itemsPerPage)) return;
+    setPage(newPage);
+  };
 
   const handleEdit = async (cccd) => {
     setIsLoading(true);
@@ -160,7 +170,7 @@ const VehicleList = () => {
   const handleSave = () => {
     setIsModalOpen(false);
     setEditingUser(null);
-    fetchVehicles(searchTerm, searchType);
+    fetchVehicles();
   };
 
   const handleCloseModal = () => {
@@ -177,24 +187,20 @@ const VehicleList = () => {
     return diffDays;
   };
 
+  // Phân trang
+  const totalPages = Math.ceil(filteredVehicles.length / itemsPerPage);
+  const paginatedVehicles = filteredVehicles.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <h2 className="text-2xl font-semibold text-primary mb-4 text-center">Danh sách xe</h2>
       <div className="mb-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
         <form onSubmit={handleSearchSubmit} className="flex-1 flex space-x-2">
-          <select
-            value={searchType}
-            onChange={handleSearchTypeChange}
-            className="p-2 border rounded-lg focus:ring-primary focus:border-primary"
-          >
-            <option value="cccd">CCCD</option>
-            <option value="licensePlate">Biển số xe</option>
-          </select>
           <input
             type="text"
             value={searchTerm}
             onChange={handleSearchChange}
-            placeholder={`Tìm theo ${searchType === 'cccd' ? 'CCCD' : 'Biển số xe'}...`}
+            placeholder="Tìm theo CCCD, biển số hoặc họ tên..."
             className="w-full p-2 border rounded-lg focus:ring-primary focus:border-primary"
           />
           <button
@@ -234,68 +240,81 @@ const VehicleList = () => {
         </div>
       ) : !isSearched ? (
         <div className="text-center p-4 text-gray-500">
-          Nhập {searchType === 'cccd' ? 'CCCD' : 'Biển số xe'} và nhấn Tìm hoặc nhấn Hiển thị tất cả để xem danh sách xe.
+          Nhập CCCD, biển số hoặc họ tên và nhấn Tìm hoặc nhấn Hiển thị tất cả để xem danh sách xe.
         </div>
-      ) : sortedVehicles.length === 0 ? (
+      ) : filteredVehicles.length === 0 ? (
         <div className="text-center p-4 text-gray-500">
           Không tìm thấy xe phù hợp với bộ lọc.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full table-auto">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('licensePlate')}>
-                  Biển số {sortConfig.key === 'licensePlate' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('cccd')}>
-                  CCCD {sortConfig.key === 'cccd' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('fullName')}>
-                  Họ tên {sortConfig.key === 'fullName' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('vehicleType')}>
-                  Loại xe {sortConfig.key === 'vehicleType' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('color')}>
-                  Màu xe {sortConfig.key === 'color' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('brand')}>
-                  Nhãn hiệu {sortConfig.key === 'brand' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('status')}>
-                  Trạng thái {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('timestamp')}>
-                  Số ngày gửi {sortConfig.key === 'timestamp' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                </th>
-                <th className="p-2 text-left">Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedVehicles.map((vehicle) => (
-                <tr key={`${vehicle.cccd}-${vehicle.licensePlate}`} className="border-b">
-                  <td className="p-2 text-accent font-bold">{formatLicensePlate(vehicle.licensePlate)}</td>
-                  <td className="p-2">{vehicle.cccd}</td>
-                  <td className="p-2">{vehicle.fullName}</td>
-                  <td className="p-2">{vehicle.vehicleType || 'Chưa xác định'}</td>
-                  <td className="p-2">{vehicle.color || 'Chưa xác định'}</td>
-                  <td className="p-2">{vehicle.brand || 'Chưa xác định'}</td>
-                  <td className="p-2">{vehicle.status}</td>
-                  <td className="p-2">{vehicle.status === 'Đang gửi' ? calculateDaysParked(vehicle.timestamp) : 'N/A'}</td>
-                  <td className="p-2">
-                    <button
-                      onClick={() => handleEdit(vehicle.cccd)}
-                      className="px-2 py-1 bg-accent text-white rounded hover:bg-yellow-600"
-                    >
-                      Sửa
-                    </button>
-                  </td>
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full table-auto">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('licensePlate')}>
+                    Biển số {sortBy === 'licensePlate' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('cccd')}>
+                    CCCD {sortBy === 'cccd' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('fullName')}>
+                    Họ tên {sortBy === 'fullName' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="p-2 text-left">Loại xe</th>
+                  <th className="p-2 text-left">Màu xe</th>
+                  <th className="p-2 text-left">Nhãn hiệu</th>
+                  <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('status')}>
+                    Trạng thái {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('timestamp')}>
+                    Số ngày gửi {sortBy === 'timestamp' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="p-2 text-left">Hành động</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {paginatedVehicles.map((vehicle) => (
+                  <tr key={`${vehicle.cccd}-${vehicle.licensePlate}`} className="border-b">
+                    <td className="p-2 text-accent font-bold">{formatLicensePlate(vehicle.licensePlate)}</td>
+                    <td className="p-2">{vehicle.cccd}</td>
+                    <td className="p-2">{vehicle.fullName}</td>
+                    <td className="p-2">{vehicle.vehicleType || 'Chưa xác định'}</td>
+                    <td className="p-2">{vehicle.color || 'Chưa xác định'}</td>
+                    <td className="p-2">{vehicle.brand || 'Chưa xác định'}</td>
+                    <td className="p-2">{vehicle.status}</td>
+                    <td className="p-2">{vehicle.status === 'Đang gửi' ? calculateDaysParked(vehicle.timestamp) : 'N/A'}</td>
+                    <td className="p-2">
+                      <button
+                        onClick={() => handleEdit(vehicle.cccd)}
+                        className="px-2 py-1 bg-accent text-white rounded hover:bg-yellow-600"
+                      >
+                        Sửa
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-between mt-4">
+            <button
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1}
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg disabled:opacity-50"
+            >
+              Trang trước
+            </button>
+            <span>Trang {page} / {totalPages}</span>
+            <button
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page === totalPages}
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg disabled:opacity-50"
+            >
+              Trang sau
+            </button>
+          </div>
+        </>
       )}
 
       {isModalOpen && (
