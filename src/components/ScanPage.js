@@ -20,9 +20,7 @@ const ScanPage = () => {
     fetchParkedVehicleCount();
 
     return () => {
-      if (html5QrCodeRef.current && html5QrCodeRef.current.getState() === 2) {
-        html5QrCodeRef.current.stop().catch((err) => console.error('Lỗi khi dừng camera:', err));
-      }
+      stopScanner();
     };
   }, []);
 
@@ -36,67 +34,71 @@ const ScanPage = () => {
     }
   };
 
-  useEffect(() => {
+  const startScanner = async () => {
     const qrCodeScanner = html5QrCodeRef.current;
-    if (!qrCodeScanner) return;
+    try {
+      setIsLoading(true);
+      const cameras = await Html5Qrcode.getCameras();
+      if (!cameras || cameras.length === 0) {
+        toast.error('Không tìm thấy camera');
+        return;
+      }
 
-    const startScanning = async () => {
-      try {
-        setIsLoading(true);
-        const cameras = await Html5Qrcode.getCameras();
-        if (cameras && cameras.length) {
-          await qrCodeScanner.start(
-            { facingMode: 'environment' },
-            { fps: 24, qrbox: { width: 50, height: 50 } },
-            async (decodedText) => {
-              setIsScanning(false);
-              try {
-                const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/scan`, { qrString: decodedText });
-                setUserInfo(response.data);
-                toast.success('Quét mã QR thành công!');
-              } catch (err) {
-                toast.error(err.response?.data?.error || 'Lỗi khi quét mã QR');
-              }
-            },
-            (errorMessage) => {
-              if (!errorMessage.includes('NotFoundException')) {
-                console.error('Lỗi khi quét QR:', errorMessage);
-              }
-            }
-          );
-          setIsLoading(false);
-        } else {
-          toast.error('Không tìm thấy camera');
+      await qrCodeScanner.start(
+        { facingMode: 'environment' },
+        {
+          fps: 24,
+          qrbox: { width: 250, height: 250 }, // tăng vùng quét
+          aspectRatio: 1.0,
+        },
+        async (decodedText) => {
+          if (!decodedText) return;
+          await qrCodeScanner.pause(); // Tạm dừng sau khi quét thành công
           setIsScanning(false);
-          setIsLoading(false);
+
+          try {
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/scan`, {
+              qrString: decodedText,
+            });
+            setUserInfo(response.data);
+            toast.success('Quét mã QR thành công!');
+          } catch (err) {
+            toast.error(err.response?.data?.error || 'Lỗi khi quét mã QR');
+          }
+        },
+        (errorMessage) => {
+          if (!errorMessage.includes('NotFoundException')) {
+            console.error('Lỗi khi quét QR:', errorMessage);
+          }
         }
+      );
+    } catch (err) {
+      toast.error('Không thể khởi động camera: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const stopScanner = async () => {
+    const qrCodeScanner = html5QrCodeRef.current;
+    if (qrCodeScanner?.getState() === 2) {
+      try {
+        await qrCodeScanner.stop();
       } catch (err) {
-        toast.error('Không thể khởi động camera: ' + err.message);
-        setIsScanning(false);
-        setIsLoading(false);
+        console.error('Lỗi khi dừng camera:', err);
       }
-    };
+    }
+  };
 
-    const stopScanning = async () => {
-      if (qrCodeScanner && qrCodeScanner.getState() === 2) {
-        try {
-          await qrCodeScanner.stop();
-          setIsLoading(false);
-        } catch (err) {
-          console.error('Lỗi khi dừng camera:', err);
-          setIsLoading(false);
-        }
-      }
-    };
-
+  useEffect(() => {
     if (isScanning) {
-      startScanning();
+      startScanner();
     } else {
-      stopScanning();
+      stopScanner();
     }
 
     return () => {
-      stopScanning();
+      stopScanner();
     };
   }, [isScanning]);
 
@@ -109,22 +111,17 @@ const ScanPage = () => {
         action,
       });
       toast.success(`${action} xe thành công!`);
-      setUserInfo((prev) => ({
-        ...prev,
-        user: {
-          ...prev.user,
-          vehicles: prev.user.vehicles.map((v) =>
-            v.licensePlate === licensePlate
-              ? {
-                  ...v,
-                  status: response.data.status,
-                  lastTransaction: { action, timestamp: response.data.timestamp },
-                }
-              : v
-          ),
-        },
-      }));
-      fetchParkedVehicleCount(); // Cập nhật lại số xe sau hành động
+      const updatedVehicles = userInfo.user.vehicles.map((v) =>
+        v.licensePlate === licensePlate
+          ? {
+              ...v,
+              status: response.data.status,
+              lastTransaction: { action, timestamp: response.data.timestamp },
+            }
+          : v
+      );
+      setUserInfo({ ...userInfo, user: { ...userInfo.user, vehicles: updatedVehicles } });
+      fetchParkedVehicleCount();
     } catch (err) {
       toast.error(err.response?.data?.error || `Lỗi khi ${action.toLowerCase()} xe`);
     } finally {
@@ -135,10 +132,11 @@ const ScanPage = () => {
   const toggleFlash = async () => {
     try {
       if (html5QrCodeRef.current && isScanning) {
+        const newFlashState = !flashOn;
         await html5QrCodeRef.current.applyVideoConstraints({
-          advanced: [{ torch: !flashOn }],
+          advanced: [{ torch: newFlashState }],
         });
-        setFlashOn(!flashOn);
+        setFlashOn(newFlashState);
       }
     } catch (err) {
       toast.error('Không thể bật/tắt đèn flash: ' + err.message);
@@ -191,14 +189,14 @@ const ScanPage = () => {
               isScanning ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-blue-700'
             } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            {isLoading ? 'Đang tải Camera...' : (isScanning ? 'Dừng quét' : 'Bắt đầu quét')}
+            {isLoading ? 'Đang tải Camera...' : isScanning ? 'Dừng quét' : 'Bắt đầu quét'}
           </button>
           <button
             onClick={toggleFlash}
             disabled={!isScanning || isLoading}
             className={`px-6 py-3 rounded-lg text-white font-medium transition-colors ${
               flashOn ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'
-            } ${(!isScanning || isLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            } ${!isScanning || isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {flashOn ? 'Tắt Flash' : 'Bật Flash'}
           </button>
