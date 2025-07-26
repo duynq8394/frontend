@@ -19,7 +19,6 @@ const ScanPage = () => {
   useEffect(() => {
     html5QrCodeRef.current = new Html5Qrcode('qr-reader');
     fetchParkedVehicleCount();
-
     return () => stopScanner();
   }, []);
 
@@ -38,11 +37,21 @@ const ScanPage = () => {
       const cameras = await Html5Qrcode.getCameras();
       if (!cameras || cameras.length === 0) {
         toast.error('Không tìm thấy camera');
+        setIsScanning(false);
+        setIsLoading(false);
         return;
       }
 
+      // Tìm camera sau (rear camera)
+      const rearCamera = cameras.find((camera) => camera.facingMode === 'environment' || camera.label.toLowerCase().includes('back') || camera.label.toLowerCase().includes('rear'));
+      const cameraId = rearCamera ? rearCamera.id : cameras[0].id; // Fallback to first camera if no rear camera found
+
+      if (!rearCamera) {
+        toast.warn('Không tìm thấy camera sau, sử dụng camera mặc định');
+      }
+
       await html5QrCodeRef.current.start(
-        { facingMode: 'environment' },
+        { deviceId: { exact: cameraId } }, // Sử dụng cameraId thay vì facingMode
         {
           fps: 30,
           qrbox: { width: 280, height: 280 },
@@ -50,6 +59,7 @@ const ScanPage = () => {
           videoConstraints: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
+            focusMode: 'continuous', // Thêm focusMode để cải thiện focus
           },
         },
         async (decodedText) => {
@@ -104,6 +114,7 @@ const ScanPage = () => {
           advanced: [{ torch: newFlash }],
         });
         setFlashOn(newFlash);
+        toast.success(newFlash ? 'Đã bật flash' : 'Đã tắt flash');
       }
     } catch (err) {
       toast.error('Không thể bật/tắt flash: ' + err.message);
@@ -165,17 +176,14 @@ const ScanPage = () => {
         toast.error('Không tìm thấy video từ camera');
         return;
       }
-
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
       const formData = new FormData();
       formData.append('file', blob, 'snapshot.jpg');
-
       setIsLoading(true);
       const response = await axios.post('https://api.qrserver.com/v1/read-qr-code/', formData);
       const result = response.data[0]?.symbol[0];
@@ -206,7 +214,6 @@ const ScanPage = () => {
         <p className="text-center font-semibold text-lg mb-4">
           Số xe đang trong bãi: <span className="text-accent">{parkedVehicleCount}</span>
         </p>
-
         <div className="flex justify-center mb-4 space-x-4">
           <button
             onClick={() => navigate('/admin/login')}
@@ -215,9 +222,7 @@ const ScanPage = () => {
             Đăng nhập Admin
           </button>
         </div>
-
         <div id="qr-reader" style={{ width: '100%', display: isScanning ? 'block' : 'none' }}></div>
-
         <div className="flex justify-center space-x-4 mb-4">
           <button
             onClick={() => setIsScanning(!isScanning)}
@@ -245,7 +250,6 @@ const ScanPage = () => {
             Chụp ảnh
           </button>
         </div>
-
         <form onSubmit={handleSearch} className="flex justify-center space-x-2">
           <input
             type="text"
@@ -263,7 +267,6 @@ const ScanPage = () => {
           </button>
         </form>
       </div>
-
       {userInfo && <UserInfo userInfo={userInfo} onAction={handleAction} isLoading={isLoading} />}
     </div>
   );
