@@ -51,10 +51,14 @@ const VehicleList = () => {
       result = result.filter((v) => v.status === statusFilter);
     }
 
-    // Tìm kiếm với Fuse.js
+    // Tìm kiếm chính xác chuỗi chứa searchTerm
     if (searchTerm.trim()) {
-      const fuse = new Fuse(result, fuseOptions);
-      result = fuse.search(searchTerm).map(({ item }) => item);
+      const term = searchTerm.trim().toLowerCase();
+      result = result.filter((v) =>
+        (v.cccd && v.cccd.toLowerCase().includes(term)) ||
+        (v.licensePlate && v.licensePlate.toLowerCase().includes(term)) ||
+        (v.fullName && v.fullName.toLowerCase().includes(term))
+      );
     }
 
     // Sắp xếp
