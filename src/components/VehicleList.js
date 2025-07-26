@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
-import Fuse from 'fuse.js';
 import AddUser from './AddUser';
 import 'react-toastify/dist/ReactToastify.css';
 
