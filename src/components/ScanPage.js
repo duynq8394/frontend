@@ -47,7 +47,7 @@ const ScanPage = () => {
         if (cameras && cameras.length) {
           await qrCodeScanner.start(
             { facingMode: 'environment' },
-            { fps: 10, qrbox: { width: 200, height: 200 } },
+            { fps: 24, qrbox: { width: 50, height: 50 } },
             async (decodedText) => {
               setIsScanning(false);
               try {
