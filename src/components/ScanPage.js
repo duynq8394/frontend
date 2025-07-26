@@ -18,10 +18,9 @@ const ScanPage = () => {
   useEffect(() => {
     html5QrCodeRef.current = new Html5Qrcode('qr-reader');
     fetchParkedVehicleCount();
+
     return () => {
-      if (html5QrCodeRef.current && html5QrCodeRef.current.getState() === 2) {
-        html5QrCodeRef.current.stop().catch((err) => console.error('Lỗi khi dừng camera:', err));
-      }
+      stopScanner();
     };
   }, []);
 
@@ -35,110 +34,109 @@ const ScanPage = () => {
     }
   };
 
-  useEffect(() => {
+  const startScanner = async () => {
     const qrCodeScanner = html5QrCodeRef.current;
-    if (!qrCodeScanner) return;
+    try {
+      setIsLoading(true);
+      const cameras = await Html5Qrcode.getCameras();
+      if (!cameras || cameras.length === 0) {
+        toast.error('Không tìm thấy camera');
+        return;
+      }
 
-    const startScanning = async () => {
-      try {
-        setIsLoading(true);
-        const cameras = await Html5Qrcode.getCameras();
-        if (!cameras || cameras.length === 0) {
-          toast.error('Không tìm thấy camera trên thiết bị');
+      await qrCodeScanner.start(
+        { facingMode: 'environment' },
+        {
+          fps: 24,
+          qrbox: { width: 250, height: 250 }, // tăng vùng quét
+          aspectRatio: 1.0,
+        },
+        async (decodedText) => {
+          if (!decodedText) return;
+          await qrCodeScanner.pause(); // Tạm dừng sau khi quét thành công
           setIsScanning(false);
-          setIsLoading(false);
-          return;
-        }
 
-        // Debug: In danh sách camera
-        console.log('Danh sách camera:', cameras);
-
-        // Tìm camera sau
-        const rearCamera = cameras.find(
-          (camera) =>
-            camera.facingMode === 'environment' ||
-            camera.label.toLowerCase().includes('back') ||
-            camera.label.toLowerCase().includes('rear')
-        );
-
-        if (!rearCamera) {
-          toast.warn('Không tìm thấy camera sau, vui lòng kiểm tra thiết bị');
-          setIsScanning(false);
-          setIsLoading(false);
-          return;
-        }
-
-        console.log('Sử dụng camera:', rearCamera.label, rearCamera.id);
-
-        await qrCodeScanner.start(
-          { deviceId: { exact: rearCamera.id } },
-          {
-            fps: 15,
-            qrbox: { width: 200, height: 200 },
-            videoConstraints: {
-              deviceId: { exact: rearCamera.id },
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-              focusMode: 'continuous',
-            },
-          },
-          async (decodedText) => {
-            setIsScanning(false);
-            try {
-              const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/scan`, {
-                qrString: decodedText,
-              });
-              setUserInfo(response.data);
-              toast.success('Quét mã QR thành công!');
-            } catch (err) {
-              toast.error(err.response?.data?.error || 'Lỗi khi quét mã QR');
-            }
-          },
-          (errorMessage) => {
-            if (!errorMessage.includes('NotFoundException')) {
-              console.error('Lỗi khi quét QR:', errorMessage);
-            }
+          try {
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/scan`, {
+              qrString: decodedText,
+            });
+            setUserInfo(response.data);
+            toast.success('Quét mã QR thành công!');
+          } catch (err) {
+            toast.error(err.response?.data?.error || 'Lỗi khi quét mã QR');
           }
-        );
-        setIsLoading(false);
-      } catch (err) {
-        toast.error('Không thể khởi động camera sau: ' + err.message);
-        setIsScanning(false);
-        setIsLoading(false);
-      }
-    };
-
-    const stopScanning = async () => {
-      if (qrCodeScanner && qrCodeScanner.getState() === 2) {
-        try {
-          await qrCodeScanner.stop();
-          setIsLoading(false);
-        } catch (err) {
-          console.error('Lỗi khi dừng camera:', err);
-          setIsLoading(false);
+        },
+        (errorMessage) => {
+          if (!errorMessage.includes('NotFoundException')) {
+            console.error('Lỗi khi quét QR:', errorMessage);
+          }
         }
-      }
-    };
+      );
+    } catch (err) {
+      toast.error('Không thể khởi động camera: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  const stopScanner = async () => {
+    const qrCodeScanner = html5QrCodeRef.current;
+    if (qrCodeScanner?.getState() === 2) {
+      try {
+        await qrCodeScanner.stop();
+      } catch (err) {
+        console.error('Lỗi khi dừng camera:', err);
+      }
+    }
+  };
+
+  useEffect(() => {
     if (isScanning) {
-      startScanning();
+      startScanner();
     } else {
-      stopScanning();
+      stopScanner();
     }
 
     return () => {
-      stopScanning();
+      stopScanner();
     };
   }, [isScanning]);
+
+  const handleAction = async (action, licensePlate) => {
+    setIsLoading(true);
+    try {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/action`, {
+        cccd: userInfo.user.cccd,
+        licensePlate,
+        action,
+      });
+      toast.success(`${action} xe thành công!`);
+      const updatedVehicles = userInfo.user.vehicles.map((v) =>
+        v.licensePlate === licensePlate
+          ? {
+              ...v,
+              status: response.data.status,
+              lastTransaction: { action, timestamp: response.data.timestamp },
+            }
+          : v
+      );
+      setUserInfo({ ...userInfo, user: { ...userInfo.user, vehicles: updatedVehicles } });
+      fetchParkedVehicleCount();
+    } catch (err) {
+      toast.error(err.response?.data?.error || `Lỗi khi ${action.toLowerCase()} xe`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const toggleFlash = async () => {
     try {
       if (html5QrCodeRef.current && isScanning) {
+        const newFlashState = !flashOn;
         await html5QrCodeRef.current.applyVideoConstraints({
-          advanced: [{ torch: !flashOn }],
+          advanced: [{ torch: newFlashState }],
         });
-        setFlashOn(!flashOn);
-        toast.success(!flashOn ? 'Đã bật flash' : 'Đã tắt flash');
+        setFlashOn(newFlashState);
       }
     } catch (err) {
       toast.error('Không thể bật/tắt đèn flash: ' + err.message);
@@ -161,38 +159,6 @@ const ScanPage = () => {
     } catch (err) {
       toast.error(err.response?.data?.error || 'Lỗi khi tìm kiếm');
       setUserInfo(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAction = async (action, licensePlate) => {
-    setIsLoading(true);
-    try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/action`, {
-        cccd: userInfo.user.cccd,
-        licensePlate,
-        action,
-      });
-      toast.success(`${action} xe thành công!`);
-      setUserInfo((prev) => ({
-        ...prev,
-        user: {
-          ...prev.user,
-          vehicles: prev.user.vehicles.map((v) =>
-            v.licensePlate === licensePlate
-              ? {
-                  ...v,
-                  status: response.data.status,
-                  lastTransaction: { action, timestamp: response.data.timestamp },
-                }
-              : v
-          ),
-        },
-      }));
-      fetchParkedVehicleCount();
-    } catch (err) {
-      toast.error(err.response?.data?.error || `Lỗi khi ${action.toLowerCase()} xe`);
     } finally {
       setIsLoading(false);
     }
