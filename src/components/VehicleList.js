@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ToastContainer, toast } from 'react-toastify';
+import * as XLSX from 'xlsx';
 import AddUser from './AddUser';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -33,16 +34,7 @@ const VehicleList = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Cấu hình Fuse.js
-  const fuseOptions = {
-    keys: ['cccd', 'licensePlate', 'fullName'],
-    threshold: 0.4, // Độ nhạy của tìm kiếm fuzzy (0.0: chính xác hoàn toàn, 1.0: rất lỏng lẻo)
-    ignoreLocation: true, // Bỏ qua vị trí chuỗi
-    includeScore: true,
-  };
-
   useEffect(() => {
-    // Lọc và sắp xếp khi có thay đổi
     let result = [...vehicles];
     
     // Lọc theo trạng thái
@@ -190,7 +182,29 @@ const VehicleList = () => {
     return diffDays;
   };
 
-  // Phân trang
+  const exportToExcel = () => {
+    if (filteredVehicles.length === 0) {
+      toast.warn('Không có dữ liệu để xuất ra Excel.');
+      return;
+    }
+
+    const data = filteredVehicles.map((vehicle) => ({
+      'Biển số': formatLicensePlate(vehicle.licensePlate),
+      'CCCD': vehicle.cccd,
+      'Họ tên': vehicle.fullName,
+      'Loại xe': vehicle.vehicleType || 'Chưa xác định',
+      'Màu xe': vehicle.color || 'Chưa xác định',
+      'Nhãn hiệu': vehicle.brand || 'Chưa xác định',
+      'Trạng thái': vehicle.status,
+      'Số ngày gửi': vehicle.status === 'Đang gửi' ? calculateDaysParked(vehicle.timestamp) : 'N/A',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Danh sách xe');
+    XLSX.writeFile(wb, 'vehicle_list.xlsx');
+  };
+
   const totalPages = Math.ceil(filteredVehicles.length / itemsPerPage);
   const paginatedVehicles = filteredVehicles.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
@@ -227,6 +241,12 @@ const VehicleList = () => {
           className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
         >
           Hiển thị tất cả
+        </button>
+        <button
+          onClick={exportToExcel}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        >
+          Xuất Excel
         </button>
       </div>
 
