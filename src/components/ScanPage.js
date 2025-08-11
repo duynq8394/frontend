@@ -3,6 +3,8 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { ToastContainer, toast } from 'react-toastify';
 import axios from 'axios';
 import UserInfo from './UserInfo';
+import RecentTransactions from './RecentTransactions';
+import PlateSearch from './PlateSearch';
 import { useNavigate } from 'react-router-dom';
 
 const ScanPage = () => {
@@ -12,6 +14,7 @@ const ScanPage = () => {
   const [flashOn, setFlashOn] = useState(false);
   const [parkedVehicleCount, setParkedVehicleCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showRecentTransactions, setShowRecentTransactions] = useState(false);
   const html5QrCodeRef = useRef(null);
   const navigate = useNavigate();
 
@@ -23,6 +26,15 @@ const ScanPage = () => {
       stopScanner();
     };
   }, []);
+
+  // Reset scanner khi component unmount hoặc khi userInfo thay đổi
+  useEffect(() => {
+    if (userInfo) {
+      // Reset scanner để có thể quét lại
+      stopScanner();
+      setIsScanning(false);
+    }
+  }, [userInfo]);
 
   const fetchParkedVehicleCount = async () => {
     try {
@@ -53,7 +65,7 @@ const ScanPage = () => {
         },
         async (decodedText) => {
           if (!decodedText) return;
-          await qrCodeScanner.pause(); // Tạm dừng sau khi quét thành công
+          await qrCodeScanner.stop(); // Dừng hoàn toàn scanner thay vì pause
           setIsScanning(false);
 
           try {
@@ -122,6 +134,8 @@ const ScanPage = () => {
       );
       setUserInfo({ ...userInfo, user: { ...userInfo.user, vehicles: updatedVehicles } });
       fetchParkedVehicleCount();
+      // Cập nhật lịch sử giao dịch
+      setShowRecentTransactions(true);
     } catch (err) {
       toast.error(err.response?.data?.error || `Lỗi khi ${action.toLowerCase()} xe`);
     } finally {
@@ -164,6 +178,21 @@ const ScanPage = () => {
     }
   };
 
+  const handleVehicleSelect = async (vehicle) => {
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/search`, {
+        params: { query: vehicle.ownerCccd },
+      });
+      setUserInfo(response.data);
+      toast.success('Đã chọn xe thành công!');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Lỗi khi tìm thông tin xe');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
@@ -172,12 +201,18 @@ const ScanPage = () => {
         <p className="text-center font-semibold text-lg mb-4">
           Số xe đang trong bãi: <span className="text-accent">{parkedVehicleCount}</span>
         </p>
-        <div className="flex justify-center mb-4">
+        <div className="flex justify-center space-x-4 mb-4">
           <button
             onClick={() => navigate('/admin/login')}
             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
           >
             Đăng nhập Admin
+          </button>
+          <button
+            onClick={() => setShowRecentTransactions(!showRecentTransactions)}
+            className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-green-700"
+          >
+            {showRecentTransactions ? 'Ẩn lịch sử' : 'Xem lịch sử'}
           </button>
         </div>
         <div id="qr-reader" style={{ width: '100%', display: isScanning ? 'block' : 'none' }}></div>
@@ -218,6 +253,20 @@ const ScanPage = () => {
           </button>
         </form>
       </div>
+      
+      {/* Tìm kiếm theo biển số xe */}
+      <div className="mb-6">
+        <PlateSearch onVehicleSelect={handleVehicleSelect} />
+      </div>
+
+      {/* Lịch sử giao dịch gần nhất */}
+      {showRecentTransactions && (
+        <div className="mb-6">
+          <RecentTransactions />
+        </div>
+      )}
+
+      {/* Thông tin người dùng */}
       {userInfo && <UserInfo userInfo={userInfo} onAction={handleAction} isLoading={isLoading} />}
     </div>
   );
