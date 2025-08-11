@@ -8,8 +8,7 @@ const DashboardCards = () => {
     totalVehicles: 0,
     parkedVehicles: 0,
     todayTransactions: 0,
-    monthlyTransactions: 0,
-    revenue: 0
+    monthlyTransactions: 0
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -72,21 +71,13 @@ const DashboardCards = () => {
       color: 'bg-indigo-500',
       change: '+22%',
       changeType: 'positive'
-    },
-    {
-      title: 'Doanh thu tháng',
-      value: `${stats.revenue.toLocaleString('vi-VN')}đ`,
-      icon: '💰',
-      color: 'bg-red-500',
-      change: '+18%',
-      changeType: 'positive'
     }
   ];
 
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[...Array(6)].map((_, i) => (
+        {[...Array(5)].map((_, i) => (
           <div key={i} className="bg-white rounded-lg shadow p-6 animate-pulse">
             <div className="flex items-center">
               <div className="w-12 h-12 bg-gray-200 rounded-full"></div>

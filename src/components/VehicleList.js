@@ -52,20 +52,73 @@ const VehicleList = ({ compact = false }) => {
       );
     }
 
-    // Sắp xếp
+    // Sắp xếp cải tiến
     result.sort((a, b) => {
-      let valueA = a[sortBy] || '';
-      let valueB = b[sortBy] || '';
-      if (sortBy === 'timestamp') {
-        valueA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-        valueB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      let valueA, valueB;
+      
+      switch (sortBy) {
+        case 'licensePlate':
+          // Sắp xếp biển số xe theo thứ tự logic
+          valueA = (a.licensePlate || '').replace(/[-.]/g, '').toUpperCase();
+          valueB = (b.licensePlate || '').replace(/[-.]/g, '').toUpperCase();
+          break;
+        case 'cccd':
+          // Sắp xếp CCCD theo số
+          valueA = parseInt(a.cccd || '0') || 0;
+          valueB = parseInt(b.cccd || '0') || 0;
+          break;
+        case 'fullName':
+          // Sắp xếp tên theo bảng chữ cái tiếng Việt
+          valueA = (a.fullName || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          valueB = (b.fullName || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          break;
+        case 'status':
+          // Sắp xếp trạng thái: Đang gửi trước, Đã lấy sau
+          const statusOrder = { 'Đang gửi': 1, 'Đã lấy': 2 };
+          valueA = statusOrder[a.status] || 3;
+          valueB = statusOrder[b.status] || 3;
+          break;
+        case 'timestamp':
+          // Sắp xếp theo thời gian
+          valueA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+          valueB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+          break;
+        case 'vehicleType':
+          // Sắp xếp theo loại xe
+          valueA = (a.vehicleType || '').toLowerCase();
+          valueB = (b.vehicleType || '').toLowerCase();
+          break;
+        case 'color':
+          // Sắp xếp theo màu xe
+          valueA = (a.color || '').toLowerCase();
+          valueB = (b.color || '').toLowerCase();
+          break;
+        case 'brand':
+          // Sắp xếp theo nhãn hiệu
+          valueA = (a.brand || '').toLowerCase();
+          valueB = (b.brand || '').toLowerCase();
+          break;
+        default:
+          valueA = a[sortBy] || '';
+          valueB = b[sortBy] || '';
       }
-      if (typeof valueA === 'string') valueA = valueA.toLowerCase();
-      if (typeof valueB === 'string') valueB = valueB.toLowerCase();
-      if (sortOrder === 'asc') {
-        return valueA > valueB ? 1 : -1;
+
+      // Xử lý sắp xếp
+      if (typeof valueA === 'number' && typeof valueB === 'number') {
+        return sortOrder === 'asc' ? valueA - valueB : valueB - valueA;
+      } else if (typeof valueA === 'string' && typeof valueB === 'string') {
+        if (sortOrder === 'asc') {
+          return valueA.localeCompare(valueB, 'vi');
+        } else {
+          return valueB.localeCompare(valueA, 'vi');
+        }
       } else {
-        return valueA < valueB ? 1 : -1;
+        // Fallback cho các trường hợp khác
+        if (sortOrder === 'asc') {
+          return valueA > valueB ? 1 : -1;
+        } else {
+          return valueA < valueB ? 1 : -1;
+        }
       }
     });
 
@@ -279,22 +332,28 @@ const VehicleList = ({ compact = false }) => {
             <table className="w-full table-auto">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('licensePlate')}>
+                  <th className="p-2 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('licensePlate')}>
                     Biển số {sortBy === 'licensePlate' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('cccd')}>
+                  <th className="p-2 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('cccd')}>
                     CCCD {sortBy === 'cccd' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('fullName')}>
+                  <th className="p-2 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('fullName')}>
                     Họ tên {sortBy === 'fullName' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="p-2 text-left">Loại xe</th>
-                  <th className="p-2 text-left">Màu xe</th>
-                  <th className="p-2 text-left">Nhãn hiệu</th>
-                  <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('status')}>
+                  <th className="p-2 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('vehicleType')}>
+                    Loại xe {sortBy === 'vehicleType' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="p-2 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('color')}>
+                    Màu xe {sortBy === 'color' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="p-2 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('brand')}>
+                    Nhãn hiệu {sortBy === 'brand' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th className="p-2 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('status')}>
                     Trạng thái {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="p-2 text-left cursor-pointer" onClick={() => handleSort('timestamp')}>
+                  <th className="p-2 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('timestamp')}>
                     Số ngày gửi {sortBy === 'timestamp' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th className="p-2 text-left">Hành động</th>
