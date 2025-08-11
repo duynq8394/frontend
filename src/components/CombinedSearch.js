@@ -39,8 +39,18 @@ const CombinedSearch = ({ onUserSelect, onVehicleSelect }) => {
 
     setLoading(true);
     try {
-      // Kiểm tra xem có phải là số cuối biển số xe không (3 số trở lên)
-      if (/^\d{3,}$/.test(searchTerm)) {
+      // Kiểm tra nếu là CCCD (12 số)
+      if (/^\d{12}$/.test(searchTerm)) {
+        // Tìm kiếm theo CCCD
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/search`, {
+          params: { query: searchTerm }
+        });
+        onUserSelect(response.data);
+        toast.success('Tìm kiếm thành công!');
+        setShowResults(false);
+      }
+      // Kiểm tra nếu là số cuối biển số xe (3-5 số)
+      else if (/^\d{3,5}$/.test(searchTerm)) {
         // Tìm kiếm theo số cuối biển số xe
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/search-by-plate-suffix`, {
           params: { suffix: searchTerm }
@@ -50,8 +60,10 @@ const CombinedSearch = ({ onUserSelect, onVehicleSelect }) => {
         if (response.data.vehicles.length === 0) {
           toast.info('Không tìm thấy xe nào có số cuối này');
         }
-      } else {
-        // Tìm kiếm theo CCCD, biển số xe đầy đủ hoặc 3-5 số
+      }
+      // Trường hợp còn lại: biển số xe đầy đủ hoặc các trường hợp khác
+      else {
+        // Tìm kiếm theo biển số xe đầy đủ hoặc các trường hợp khác
         const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/search`, {
           params: { query: searchTerm }
         });
