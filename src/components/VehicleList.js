@@ -214,45 +214,43 @@ const VehicleList = ({ compact = false }) => {
         <>
           <h2 className="text-2xl font-semibold text-primary mb-4 text-center">Danh sách xe</h2>
           <div className="mb-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-        </>
-      )}
-                  <form onSubmit={handleSearchSubmit} className="flex-1 flex space-x-2">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              placeholder="Tìm theo CCCD, biển số hoặc họ tên..."
-              className="w-full p-2 border rounded-lg focus:ring-primary focus:border-primary"
-            />
-            <button
-              type="submit"
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+            <form onSubmit={handleSearchSubmit} className="flex-1 flex space-x-2">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={handleSearchChange}
+                placeholder="Tìm theo CCCD, biển số hoặc họ tên..."
+                className="w-full p-2 border rounded-lg focus:ring-primary focus:border-primary"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+              >
+                Tìm
+              </button>
+            </form>
+            <select
+              value={statusFilter}
+              onChange={handleStatusFilterChange}
+              className="p-2 border rounded-lg focus:ring-primary focus:border-primary"
             >
-              Tìm
+              <option value="">Tất cả trạng thái</option>
+              <option value="Đang gửi">Đang gửi</option>
+              <option value="Đã lấy">Đã lấy</option>
+            </select>
+            <button
+              onClick={handleShowAll}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+            >
+              Hiển thị tất cả
             </button>
-          </form>
-          <select
-            value={statusFilter}
-            onChange={handleStatusFilterChange}
-            className="p-2 border rounded-lg focus:ring-primary focus:border-primary"
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="Đang gửi">Đang gửi</option>
-            <option value="Đã lấy">Đã lấy</option>
-          </select>
-          <button
-            onClick={handleShowAll}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-          >
-            Hiển thị tất cả
-          </button>
-          <button
-            onClick={exportToExcel}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
-            Xuất Excel
-          </button>
-        </div>
+            <button
+              onClick={exportToExcel}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Xuất Excel
+            </button>
+          </div>
         </>
       )}
 
