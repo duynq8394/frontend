@@ -23,8 +23,8 @@ const formatLicensePlate = (plate) => {
   return plate;
 };
 
-const PlateSearch = ({ onVehicleSelect }) => {
-  const [suffix, setSuffix] = useState('');
+const CombinedSearch = ({ onUserSelect, onVehicleSelect }) => {
+  const [searchTerm, setSearchTerm] = useState('');
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -32,29 +32,37 @@ const PlateSearch = ({ onVehicleSelect }) => {
   const handleSearch = async (e) => {
     e.preventDefault();
     
-    if (!suffix || suffix.length < 4) {
-      toast.error('Vui lòng nhập ít nhất 4 số cuối biển số xe');
-      return;
-    }
-
-    if (!/^\d+$/.test(suffix)) {
-      toast.error('Chỉ được nhập số');
+    if (!searchTerm.trim()) {
+      toast.error('Vui lòng nhập CCCD hoặc biển số xe để tìm kiếm');
       return;
     }
 
     setLoading(true);
     try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/search-by-plate-suffix`, {
-        params: { suffix }
-      });
-      setVehicles(response.data.vehicles);
-      setShowResults(true);
-      if (response.data.vehicles.length === 0) {
-        toast.info('Không tìm thấy xe nào có 5 số cuối này');
+      // Kiểm tra xem có phải là số cuối biển số xe không (4 số trở lên)
+      if (/^\d{4,}$/.test(searchTerm)) {
+        // Tìm kiếm theo số cuối biển số xe
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/search-by-plate-suffix`, {
+          params: { suffix: searchTerm }
+        });
+        setVehicles(response.data.vehicles);
+        setShowResults(true);
+        if (response.data.vehicles.length === 0) {
+          toast.info('Không tìm thấy xe nào có số cuối này');
+        }
+      } else {
+        // Tìm kiếm theo CCCD hoặc biển số xe đầy đủ
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/search`, {
+          params: { query: searchTerm }
+        });
+        onUserSelect(response.data);
+        toast.success('Tìm kiếm thành công!');
+        setShowResults(false);
       }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Lỗi khi tìm kiếm');
       setVehicles([]);
+      setShowResults(false);
     } finally {
       setLoading(false);
     }
@@ -63,31 +71,33 @@ const PlateSearch = ({ onVehicleSelect }) => {
   const handleVehicleSelect = (vehicle) => {
     onVehicleSelect(vehicle);
     setShowResults(false);
-    setSuffix('');
+    setSearchTerm('');
   };
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      <h3 className="text-xl font-semibold text-primary mb-4">Tìm kiếm theo biển số xe</h3>
+      <h3 className="text-xl font-semibold text-primary mb-4">Tìm kiếm</h3>
       
       <form onSubmit={handleSearch} className="mb-4">
         <div className="flex space-x-2">
-                     <input
-             type="text"
-             value={suffix}
-             onChange={(e) => setSuffix(e.target.value.replace(/\D/g, '').slice(0, 10))}
-             placeholder="Nhập số cuối biển số xe (4 số trở lên)..."
-             className="flex-1 p-2 border rounded-lg focus:ring-primary focus:border-primary"
-             maxLength={10}
-           />
-           <button
-             type="submit"
-             disabled={loading || suffix.length < 4}
-             className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-           >
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Nhập CCCD hoặc biển số xe..."
+            className="flex-1 p-2 border rounded-lg focus:ring-primary focus:border-primary"
+          />
+          <button
+            type="submit"
+            disabled={loading || !searchTerm.trim()}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             {loading ? 'Đang tìm...' : 'Tìm kiếm'}
           </button>
         </div>
+        <p className="text-sm text-gray-500 mt-2">
+          💡 Gợi ý: Nhập CCCD (12 số) hoặc biển số xe đầy đủ để tìm chủ xe, hoặc nhập 4+ số cuối biển số xe để tìm xe
+        </p>
       </form>
 
       {showResults && vehicles.length > 0 && (
@@ -131,13 +141,13 @@ const PlateSearch = ({ onVehicleSelect }) => {
         </div>
       )}
 
-             {showResults && vehicles.length === 0 && !loading && (
-         <div className="text-center py-4">
-           <p className="text-gray-500">Không tìm thấy xe nào có số cuối "{suffix}"</p>
-         </div>
-       )}
+      {showResults && vehicles.length === 0 && !loading && (
+        <div className="text-center py-4">
+          <p className="text-gray-500">Không tìm thấy xe nào có số cuối "{searchTerm}"</p>
+        </div>
+      )}
     </div>
   );
 };
 
-export default PlateSearch;
+export default CombinedSearch;

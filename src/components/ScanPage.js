@@ -4,16 +4,14 @@ import { ToastContainer, toast } from 'react-toastify';
 import axios from 'axios';
 import UserInfo from './UserInfo';
 import RecentTransactions from './RecentTransactions';
-import PlateSearch from './PlateSearch';
+import CombinedSearch from './CombinedSearch';
 import { useNavigate } from 'react-router-dom';
 
 const ScanPage = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [flashOn, setFlashOn] = useState(false);
   const [parkedVehicleCount, setParkedVehicleCount] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
   const [showRecentTransactions, setShowRecentTransactions] = useState(false);
   const html5QrCodeRef = useRef(null);
   const navigate = useNavigate();
@@ -143,39 +141,10 @@ const ScanPage = () => {
     }
   };
 
-  const toggleFlash = async () => {
-    try {
-      if (html5QrCodeRef.current && isScanning) {
-        const newFlashState = !flashOn;
-        await html5QrCodeRef.current.applyVideoConstraints({
-          advanced: [{ torch: newFlashState }],
-        });
-        setFlashOn(newFlashState);
-      }
-    } catch (err) {
-      toast.error('Không thể bật/tắt đèn flash: ' + err.message);
-    }
-  };
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchTerm) {
-      toast.error('Vui lòng nhập CCCD hoặc Họ tên để tìm kiếm');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/search`, {
-        params: { query: searchTerm },
-      });
-      setUserInfo(response.data);
-      toast.success('Tìm kiếm thành công!');
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Lỗi khi tìm kiếm');
-      setUserInfo(null);
-    } finally {
-      setIsLoading(false);
-    }
+
+  const handleUserSelect = (userData) => {
+    setUserInfo(userData);
   };
 
   const handleVehicleSelect = async (vehicle) => {
@@ -216,58 +185,33 @@ const ScanPage = () => {
           </button>
         </div>
         <div id="qr-reader" style={{ width: '100%', display: isScanning ? 'block' : 'none' }}></div>
-        <div className="flex justify-center space-x-4 mb-4">
-          <button
-            onClick={() => setIsScanning(!isScanning)}
-            disabled={isLoading}
-            className={`px-6 py-3 rounded-lg text-white font-medium transition-colors ${
-              isScanning ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-blue-700'
-            } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {isLoading ? 'Đang tải Camera...' : isScanning ? 'Dừng quét' : 'Bắt đầu quét'}
-          </button>
-          <button
-            onClick={toggleFlash}
-            disabled={!isScanning || isLoading}
-            className={`px-6 py-3 rounded-lg text-white font-medium transition-colors ${
-              flashOn ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'
-            } ${!isScanning || isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {flashOn ? 'Tắt Flash' : 'Bật Flash'}
-          </button>
-        </div>
-        <form onSubmit={handleSearch} className="flex justify-center space-x-2">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Nhập CCCD hoặc Họ tên..."
-            className="p-2 border rounded-lg w-full max-w-md focus:ring-primary focus:border-primary"
-          />
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            Tìm kiếm
-          </button>
-        </form>
+                          <div className="flex justify-center mb-4">
+           <button
+             onClick={() => setIsScanning(!isScanning)}
+             disabled={isLoading}
+             className={`px-6 py-3 rounded-lg text-white font-medium transition-colors ${
+               isScanning ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-blue-700'
+             } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+           >
+             {isLoading ? 'Đang tải Camera...' : isScanning ? 'Dừng quét' : 'Bắt đầu quét'}
+           </button>
+         </div>
       </div>
       
-      {/* Tìm kiếm theo biển số xe */}
-      <div className="mb-6">
-        <PlateSearch onVehicleSelect={handleVehicleSelect} />
-      </div>
+             {/* Tìm kiếm kết hợp */}
+       <div className="mb-6">
+         <CombinedSearch onUserSelect={handleUserSelect} onVehicleSelect={handleVehicleSelect} />
+       </div>
 
-      {/* Lịch sử giao dịch gần nhất */}
-      {showRecentTransactions && (
-        <div className="mb-6">
-          <RecentTransactions />
-        </div>
-      )}
+       {/* Thông tin người dùng */}
+       {userInfo && <UserInfo userInfo={userInfo} onAction={handleAction} isLoading={isLoading} />}
 
-      {/* Thông tin người dùng */}
-      {userInfo && <UserInfo userInfo={userInfo} onAction={handleAction} isLoading={isLoading} />}
+       {/* Lịch sử giao dịch gần nhất */}
+       {showRecentTransactions && (
+         <div className="mb-6">
+           <RecentTransactions />
+         </div>
+       )}
     </div>
   );
 };
