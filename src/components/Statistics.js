@@ -40,13 +40,13 @@ const Statistics = () => {
       setTotalParked(response.data.totalParked || 0);
 
       // Tính tổng số xe vào/ra
-      const totalInCount = response.data.monthly.reduce((sum, item) => {
+      const totalInCount = response.data.daily.reduce((sum, item) => {
         const sendAction = item.actions && Array.isArray(item.actions)
           ? item.actions.find((a) => a.action === 'Gửi')
           : null;
         return sum + (sendAction ? sendAction.count : 0);
       }, 0);
-      const totalOutCount = response.data.monthly.reduce((sum, item) => {
+      const totalOutCount = response.data.daily.reduce((sum, item) => {
         const retrieveAction = item.actions && Array.isArray(item.actions)
           ? item.actions.find((a) => a.action === 'Lấy')
           : null;
@@ -86,7 +86,12 @@ const Statistics = () => {
     datasets: [
       {
         label: 'Số xe gửi',
-        data: dailyData.map((item) => item.count || 0),
+        data: dailyData.map((item) => {
+          const sendAction = item.actions && Array.isArray(item.actions)
+            ? item.actions.find((a) => a.action === 'Gửi')
+            : null;
+          return sendAction ? sendAction.count : 0;
+        }),
         backgroundColor: '#1E40AF',
         borderColor: '#1E40AF',
         borderWidth: 2,
@@ -165,17 +170,40 @@ const Statistics = () => {
     }),
     datasets: [
       {
-        label: 'Xu hướng xe gửi',
-        data: dailyData.map((item) => item.count || 0),
-        borderColor: '#8B5CF6',
-        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        label: 'Xe vào',
+        data: dailyData.map((item) => {
+          const sendAction = item.actions && Array.isArray(item.actions)
+            ? item.actions.find((a) => a.action === 'Gửi')
+            : null;
+          return sendAction ? sendAction.count : 0;
+        }),
+        borderColor: '#10B981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
         borderWidth: 3,
         tension: 0.4,
-        fill: true,
-        pointBackgroundColor: '#8B5CF6',
+        fill: false,
+        pointBackgroundColor: '#10B981',
         pointBorderColor: '#fff',
         pointBorderWidth: 2,
-        pointRadius: 6,
+        pointRadius: 5,
+      },
+      {
+        label: 'Xe ra',
+        data: dailyData.map((item) => {
+          const retrieveAction = item.actions && Array.isArray(item.actions)
+            ? item.actions.find((a) => a.action === 'Lấy')
+            : null;
+          return retrieveAction ? retrieveAction.count : 0;
+        }),
+        borderColor: '#EF4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderWidth: 3,
+        tension: 0.4,
+        fill: false,
+        pointBackgroundColor: '#EF4444',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
       },
     ],
   };
@@ -301,7 +329,7 @@ const Statistics = () => {
             </div>
 
             <div>
-              <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Xu hướng xe gửi theo ngày</h3>
+              <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Xu hướng xe vào/ra theo ngày</h3>
               <Line
                 data={lineChartData}
                 options={{
@@ -406,19 +434,17 @@ const Statistics = () => {
           </div>
 
           {/* Thông tin bổ sung */}
-          {(startDate || endDate) && (
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-700 mb-2 text-center">Thống kê theo khoảng thời gian</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
-                <div className="bg-white p-3 rounded-lg">
-                  <span className="text-green-600 font-medium">Tổng xe vào:</span> {totalIn} xe
-                </div>
-                <div className="bg-white p-3 rounded-lg">
-                  <span className="text-red-600 font-medium">Tổng xe ra:</span> {totalOut} xe
-                </div>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="text-lg font-medium text-gray-700 mb-2 text-center">Thống kê theo khoảng thời gian</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
+              <div className="bg-white p-3 rounded-lg">
+                <span className="text-green-600 font-medium">Tổng xe vào:</span> {totalIn} xe
+              </div>
+              <div className="bg-white p-3 rounded-lg">
+                <span className="text-red-600 font-medium">Tổng xe ra:</span> {totalOut} xe
               </div>
             </div>
-          )}
+          </div>
         </div>
       )}
       <ToastContainer position="top-right" autoClose={3000} />
