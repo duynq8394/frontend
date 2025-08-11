@@ -20,7 +20,7 @@ const formatLicensePlate = (plate) => {
   return plate;
 };
 
-const VehicleList = () => {
+const VehicleList = ({ compact = false }) => {
   const [vehicles, setVehicles] = useState([]);
   const [filteredVehicles, setFilteredVehicles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +29,7 @@ const VehicleList = () => {
   const [sortBy, setSortBy] = useState('licensePlate');
   const [sortOrder, setSortOrder] = useState('asc');
   const [page, setPage] = useState(1);
-  const [itemsPerPage] = useState(25);
+  const [itemsPerPage] = useState(compact ? 5 : 25);
   const [isSearched, setIsSearched] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -209,46 +209,52 @@ const VehicleList = () => {
   const paginatedVehicles = filteredVehicles.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-2xl font-semibold text-primary mb-4 text-center">Danh sách xe</h2>
-      <div className="mb-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-        <form onSubmit={handleSearchSubmit} className="flex-1 flex space-x-2">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={handleSearchChange}
-            placeholder="Tìm theo CCCD, biển số hoặc họ tên..."
-            className="w-full p-2 border rounded-lg focus:ring-primary focus:border-primary"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+    <div className={compact ? "" : "bg-white rounded-lg shadow-lg p-6"}>
+      {!compact && (
+        <>
+          <h2 className="text-2xl font-semibold text-primary mb-4 text-center">Danh sách xe</h2>
+          <div className="mb-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+        </>
+      )}
+                  <form onSubmit={handleSearchSubmit} className="flex-1 flex space-x-2">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              placeholder="Tìm theo CCCD, biển số hoặc họ tên..."
+              className="w-full p-2 border rounded-lg focus:ring-primary focus:border-primary"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700"
+            >
+              Tìm
+            </button>
+          </form>
+          <select
+            value={statusFilter}
+            onChange={handleStatusFilterChange}
+            className="p-2 border rounded-lg focus:ring-primary focus:border-primary"
           >
-            Tìm
+            <option value="">Tất cả trạng thái</option>
+            <option value="Đang gửi">Đang gửi</option>
+            <option value="Đã lấy">Đã lấy</option>
+          </select>
+          <button
+            onClick={handleShowAll}
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+          >
+            Hiển thị tất cả
           </button>
-        </form>
-        <select
-          value={statusFilter}
-          onChange={handleStatusFilterChange}
-          className="p-2 border rounded-lg focus:ring-primary focus:border-primary"
-        >
-          <option value="">Tất cả trạng thái</option>
-          <option value="Đang gửi">Đang gửi</option>
-          <option value="Đã lấy">Đã lấy</option>
-        </select>
-        <button
-          onClick={handleShowAll}
-          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-        >
-          Hiển thị tất cả
-        </button>
-        <button
-          onClick={exportToExcel}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-        >
-          Xuất Excel
-        </button>
-      </div>
+          <button
+            onClick={exportToExcel}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            Xuất Excel
+          </button>
+        </div>
+        </>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center p-8">
