@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement } from 'chart.js';
+import { Bar, Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement } from 'chart.js';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement);
 
 const Statistics = () => {
   const [dailyData, setDailyData] = useState([]);
@@ -159,54 +159,7 @@ const Statistics = () => {
     ],
   };
 
-  const lineChartData = {
-    labels: dailyData.map((item) => {
-      const date = new Date(item._id);
-      return date.toLocaleDateString('vi-VN', { 
-        day: '2-digit', 
-        month: '2-digit',
-        timeZone: 'Asia/Ho_Chi_Minh'
-      });
-    }),
-    datasets: [
-      {
-        label: 'Xe vào',
-        data: dailyData.map((item) => {
-          const sendAction = item.actions && Array.isArray(item.actions)
-            ? item.actions.find((a) => a.action === 'Gửi')
-            : null;
-          return sendAction ? sendAction.count : 0;
-        }),
-        borderColor: '#10B981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        borderWidth: 3,
-        tension: 0.4,
-        fill: false,
-        pointBackgroundColor: '#10B981',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-      },
-      {
-        label: 'Xe ra',
-        data: dailyData.map((item) => {
-          const retrieveAction = item.actions && Array.isArray(item.actions)
-            ? item.actions.find((a) => a.action === 'Lấy')
-            : null;
-          return retrieveAction ? retrieveAction.count : 0;
-        }),
-        borderColor: '#EF4444',
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-        borderWidth: 3,
-        tension: 0.4,
-        fill: false,
-        pointBackgroundColor: '#EF4444',
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 5,
-      },
-    ],
-  };
+
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-6xl mx-auto">
@@ -328,39 +281,7 @@ const Statistics = () => {
               </div>
             </div>
 
-            <div>
-              <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Xu hướng xe vào/ra theo ngày</h3>
-              <Line
-                data={lineChartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { position: 'top' },
-                    title: { display: false },
-                  },
-                  scales: {
-                    y: { 
-                      beginAtZero: true,
-                      title: {
-                        display: true,
-                        text: 'Số lượng xe'
-                      }
-                    },
-                    x: {
-                      title: {
-                        display: true,
-                        text: 'Ngày'
-                      }
-                    }
-                  },
-                  interaction: {
-                    intersect: false,
-                    mode: 'index'
-                  }
-                }}
-              />
-            </div>
+
           </div>
 
           {/* Biểu đồ cột */}
