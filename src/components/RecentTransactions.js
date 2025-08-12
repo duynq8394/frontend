@@ -34,11 +34,56 @@ const RecentTransactions = () => {
     try {
       setLoading(true);
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/recent-transactions`);
-      setTransactions(response.data.transactions);
+      
+      // Xử lý dữ liệu với timezone +7
+      const processedTransactions = response.data.transactions.map(transaction => {
+        const timestamp = new Date(transaction.timestamp);
+        // Chuyển từ UTC sang Vietnam time (+7)
+        const vietnamTime = new Date(timestamp.getTime() + (7 * 60 * 60 * 1000));
+        
+        return {
+          ...transaction,
+          timestamp: vietnamTime,
+          formattedTime: vietnamTime.toLocaleString('vi-VN', {
+            timeZone: 'Asia/Ho_Chi_Minh',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          }),
+          relativeTime: getRelativeTime(vietnamTime)
+        };
+      });
+      
+      // Sắp xếp theo thời gian mới nhất
+      processedTransactions.sort((a, b) => b.timestamp - a.timestamp);
+      
+      setTransactions(processedTransactions);
     } catch (error) {
       console.error('Lỗi khi lấy lịch sử giao dịch:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Hàm tính thời gian tương đối
+  const getRelativeTime = (date) => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return 'Vừa xong';
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} phút trước`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} giờ trước`;
+    } else {
+      const days = Math.floor(diffInSeconds / 86400);
+      return `${days} ngày trước`;
     }
   };
 
@@ -80,9 +125,14 @@ const RecentTransactions = () => {
                   <p className="text-sm text-gray-600 mt-1">
                     CCCD: {transaction.cccd}
                   </p>
-                  <p className="text-sm text-gray-500">
-                    {transaction.formattedTime}
-                  </p>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <p className="text-sm text-gray-500">
+                      {transaction.formattedTime}
+                    </p>
+                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                      {transaction.relativeTime}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

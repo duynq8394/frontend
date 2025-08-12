@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Bar, Doughnut } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement } from 'chart.js';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement } from 'chart.js';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement);
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement);
 
 const Statistics = () => {
   const [dailyData, setDailyData] = useState([]);
+  const [weeklyData, setWeeklyData] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
   const [totalParked, setTotalParked] = useState(0);
   const [totalIn, setTotalIn] = useState(0);
@@ -16,42 +17,74 @@ const Statistics = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState('month'); // 'week', 'month', 'year'
+  const [selectedPeriod, setSelectedPeriod] = useState('month'); // 'day', 'week', 'month'
 
   useEffect(() => {
     fetchStatistics();
   }, [selectedPeriod]);
+
+  // Hàm chuyển đổi timezone từ UTC sang +7
+  const convertToVietnamTime = (utcDate) => {
+    if (!utcDate) return new Date();
+    const date = new Date(utcDate);
+    // Chuyển từ UTC sang Vietnam time (+7)
+    const vietnamTime = new Date(date.getTime() + (7 * 60 * 60 * 1000));
+    return vietnamTime;
+  };
 
   const fetchStatistics = async () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('adminToken');
       if (!token) throw new Error('Không tìm thấy token admin');
+      
       const params = { period: selectedPeriod };
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
+      
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/statistics`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });
+      
       console.log('API /statistics response:', response.data);
-      setDailyData(response.data.daily || []);
-      setMonthlyData(response.data.monthly || []);
+      
+      // Xử lý dữ liệu với timezone +7
+      const processedDailyData = (response.data.daily || []).map(item => ({
+        ...item,
+        _id: convertToVietnamTime(item._id)
+      }));
+      
+      const processedWeeklyData = (response.data.weekly || []).map(item => ({
+        ...item,
+        _id: convertToVietnamTime(item._id)
+      }));
+      
+      const processedMonthlyData = (response.data.monthly || []).map(item => ({
+        ...item,
+        _id: convertToVietnamTime(item._id)
+      }));
+
+      setDailyData(processedDailyData);
+      setWeeklyData(processedWeeklyData);
+      setMonthlyData(processedMonthlyData);
       setTotalParked(response.data.totalParked || 0);
 
       // Tính tổng số xe vào/ra
-      const totalInCount = response.data.daily.reduce((sum, item) => {
+      const totalInCount = processedDailyData.reduce((sum, item) => {
         const sendAction = item.actions && Array.isArray(item.actions)
           ? item.actions.find((a) => a.action === 'Gửi')
           : null;
         return sum + (sendAction ? sendAction.count : 0);
       }, 0);
-      const totalOutCount = response.data.daily.reduce((sum, item) => {
+      
+      const totalOutCount = processedDailyData.reduce((sum, item) => {
         const retrieveAction = item.actions && Array.isArray(item.actions)
           ? item.actions.find((a) => a.action === 'Lấy')
           : null;
         return sum + (retrieveAction ? retrieveAction.count : 0);
       }, 0);
+      
       setTotalIn(totalInCount);
       setTotalOut(totalOutCount);
 
@@ -74,9 +107,10 @@ const Statistics = () => {
     setSelectedPeriod(period);
   };
 
+  // Tạo dữ liệu biểu đồ theo ngày
   const dailyChartData = {
     labels: dailyData.map((item) => {
-      const date = new Date(item._id);
+      const date = convertToVietnamTime(item._id);
       return date.toLocaleDateString('vi-VN', { 
         day: '2-digit', 
         month: '2-digit',
@@ -97,12 +131,66 @@ const Statistics = () => {
         borderWidth: 2,
         tension: 0.4,
       },
+      {
+        label: 'Số xe lấy',
+        data: dailyData.map((item) => {
+          const retrieveAction = item.actions && Array.isArray(item.actions)
+            ? item.actions.find((a) => a.action === 'Lấy')
+            : null;
+          return retrieveAction ? retrieveAction.count : 0;
+        }),
+        backgroundColor: '#10B981',
+        borderColor: '#10B981',
+        borderWidth: 2,
+        tension: 0.4,
+      },
     ],
   };
 
+  // Tạo dữ liệu biểu đồ theo tuần
+  const weeklyChartData = {
+    labels: weeklyData.map((item) => {
+      const date = convertToVietnamTime(item._id);
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      return `${weekStart.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} - ${weekEnd.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}`;
+    }),
+    datasets: [
+      {
+        label: 'Số xe gửi',
+        data: weeklyData.map((item) => {
+          const sendAction = item.actions && Array.isArray(item.actions)
+            ? item.actions.find((a) => a.action === 'Gửi')
+            : null;
+          return sendAction ? sendAction.count : 0;
+        }),
+        backgroundColor: '#F59E0B',
+        borderColor: '#F59E0B',
+        borderWidth: 2,
+        tension: 0.4,
+      },
+      {
+        label: 'Số xe lấy',
+        data: weeklyData.map((item) => {
+          const retrieveAction = item.actions && Array.isArray(item.actions)
+            ? item.actions.find((a) => a.action === 'Lấy')
+            : null;
+          return retrieveAction ? retrieveAction.count : 0;
+        }),
+        backgroundColor: '#EF4444',
+        borderColor: '#EF4444',
+        borderWidth: 2,
+        tension: 0.4,
+      },
+    ],
+  };
+
+  // Tạo dữ liệu biểu đồ theo tháng
   const monthlyChartData = {
     labels: monthlyData.map((item) => {
-      const date = new Date(item._id);
+      const date = convertToVietnamTime(item._id);
       return date.toLocaleDateString('vi-VN', { 
         month: 'short', 
         year: '2-digit',
@@ -111,7 +199,7 @@ const Statistics = () => {
     }),
     datasets: [
       {
-        label: 'Số xe vào',
+        label: 'Số xe gửi',
         data: monthlyData.map((item) => {
           const sendAction = item.actions && Array.isArray(item.actions)
             ? item.actions.find((a) => a.action === 'Gửi')
@@ -124,7 +212,7 @@ const Statistics = () => {
         tension: 0.4,
       },
       {
-        label: 'Số xe ra',
+        label: 'Số xe lấy',
         data: monthlyData.map((item) => {
           const retrieveAction = item.actions && Array.isArray(item.actions)
             ? item.actions.find((a) => a.action === 'Lấy')
@@ -159,7 +247,37 @@ const Statistics = () => {
     ],
   };
 
-
+  // Tạo biểu đồ đường cho xu hướng
+  const trendChartData = {
+    labels: dailyData.map((item) => {
+      const date = convertToVietnamTime(item._id);
+      return date.toLocaleDateString('vi-VN', { 
+        day: '2-digit', 
+        month: '2-digit',
+        timeZone: 'Asia/Ho_Chi_Minh'
+      });
+    }),
+    datasets: [
+      {
+        label: 'Xu hướng xe gửi',
+        data: dailyData.map((item) => {
+          const sendAction = item.actions && Array.isArray(item.actions)
+            ? item.actions.find((a) => a.action === 'Gửi')
+            : null;
+          return sendAction ? sendAction.count : 0;
+        }),
+        borderColor: '#1E40AF',
+        backgroundColor: 'rgba(30, 64, 175, 0.1)',
+        borderWidth: 3,
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#1E40AF',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+      },
+    ],
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-6xl mx-auto">
@@ -168,6 +286,16 @@ const Statistics = () => {
       {/* Bộ lọc thời gian */}
       <div className="mb-6">
         <div className="flex flex-wrap gap-2 mb-4 justify-center">
+          <button
+            onClick={() => handlePeriodChange('day')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              selectedPeriod === 'day' 
+                ? 'bg-primary text-white' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Ngày
+          </button>
           <button
             onClick={() => handlePeriodChange('week')}
             className={`px-4 py-2 rounded-lg transition-colors ${
@@ -187,16 +315,6 @@ const Statistics = () => {
             }`}
           >
             Tháng
-          </button>
-          <button
-            onClick={() => handlePeriodChange('year')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              selectedPeriod === 'year' 
-                ? 'bg-primary text-white' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Năm
           </button>
         </div>
         
@@ -281,14 +399,54 @@ const Statistics = () => {
               </div>
             </div>
 
-
+            <div>
+              <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Xu hướng gửi xe</h3>
+              <div className="h-64">
+                <Line
+                  data={trendChartData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { position: 'top' },
+                      title: { display: false },
+                    },
+                    scales: {
+                      y: { 
+                        beginAtZero: true,
+                        title: {
+                          display: true,
+                          text: 'Số lượng xe'
+                        }
+                      },
+                      x: {
+                        title: {
+                          display: true,
+                          text: 'Ngày'
+                        }
+                      }
+                    },
+                    interaction: {
+                      intersect: false,
+                      mode: 'index'
+                    }
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Biểu đồ cột */}
+          {/* Biểu đồ theo thời gian được chọn */}
           <div>
-            <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Số xe vào/ra theo tháng</h3>
+            <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">
+              {selectedPeriod === 'day' ? 'Số xe gửi/lấy theo ngày' : 
+               selectedPeriod === 'week' ? 'Số xe gửi/lấy theo tuần' : 
+               'Số xe gửi/lấy theo tháng'}
+            </h3>
             <Bar
-              data={monthlyChartData}
+              data={selectedPeriod === 'day' ? dailyChartData : 
+                    selectedPeriod === 'week' ? weeklyChartData : 
+                    monthlyChartData}
               options={{
                 responsive: true,
                 plugins: {
@@ -300,7 +458,8 @@ const Statistics = () => {
                     stacked: false,
                     title: {
                       display: true,
-                      text: 'Tháng'
+                      text: selectedPeriod === 'day' ? 'Ngày' : 
+                             selectedPeriod === 'week' ? 'Tuần' : 'Tháng'
                     }
                   },
                   y: { 
@@ -311,40 +470,6 @@ const Statistics = () => {
                       text: 'Số lượng xe'
                     }
                   },
-                },
-                interaction: {
-                  intersect: false,
-                  mode: 'index'
-                }
-              }}
-            />
-          </div>
-
-          {/* Biểu đồ cột theo ngày */}
-          <div>
-            <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Số xe gửi theo ngày</h3>
-            <Bar
-              data={dailyChartData}
-              options={{
-                responsive: true,
-                plugins: {
-                  legend: { position: 'top' },
-                  title: { display: false },
-                },
-                scales: { 
-                  y: { 
-                    beginAtZero: true,
-                    title: {
-                      display: true,
-                      text: 'Số lượng xe'
-                    }
-                  },
-                  x: {
-                    title: {
-                      display: true,
-                      text: 'Ngày'
-                    }
-                  }
                 },
                 interaction: {
                   intersect: false,

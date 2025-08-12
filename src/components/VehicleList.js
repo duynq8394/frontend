@@ -83,6 +83,15 @@ const VehicleList = ({ compact = false }) => {
           valueA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
           valueB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
           break;
+        case 'daysParked':
+          // Sắp xếp theo số ngày gửi (tính từ timestamp đến hiện tại)
+          const daysA = a.status === 'Đang gửi' && a.timestamp ? 
+            calculateDaysParked(a.timestamp) : 0;
+          const daysB = b.status === 'Đang gửi' && b.timestamp ? 
+            calculateDaysParked(b.timestamp) : 0;
+          valueA = daysA;
+          valueB = daysB;
+          break;
         case 'vehicleType':
           // Sắp xếp theo loại xe
           valueA = (a.vehicleType || '').toLowerCase();
@@ -230,7 +239,13 @@ const VehicleList = ({ compact = false }) => {
     if (!timestamp) return 'N/A';
     const parkedDate = new Date(timestamp);
     const currentDate = new Date();
-    const diffTime = Math.abs(currentDate - parkedDate);
+    
+    // Chuyển đổi timezone sang Vietnam (+7)
+    const vietnamParkedDate = new Date(parkedDate.getTime() + (7 * 60 * 60 * 1000));
+    const vietnamCurrentDate = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
+    
+    // Tính số ngày chênh lệch
+    const diffTime = Math.abs(vietnamCurrentDate - vietnamParkedDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };
@@ -353,8 +368,8 @@ const VehicleList = ({ compact = false }) => {
                   <th className="p-2 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('status')}>
                     Trạng thái {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="p-2 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('timestamp')}>
-                    Số ngày gửi {sortBy === 'timestamp' && (sortOrder === 'asc' ? '↑' : '↓')}
+                  <th className="p-2 text-left cursor-pointer hover:bg-gray-200 transition-colors" onClick={() => handleSort('daysParked')}>
+                    Số ngày gửi {sortBy === 'daysParked' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th className="p-2 text-left">Hành động</th>
                 </tr>
