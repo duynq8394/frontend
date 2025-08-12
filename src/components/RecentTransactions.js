@@ -35,29 +35,22 @@ const RecentTransactions = () => {
       setLoading(true);
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/recent-transactions`);
       
-      // Xử lý dữ liệu - KHÔNG chuyển đổi timezone nữa vì backend đã lưu +7
+      // Xử lý dữ liệu - KHÔNG chuyển đổi timezone nữa, chỉ parse bình thường
       const processedTransactions = response.data.transactions.map(transaction => {
-        // Timestamp từ MongoDB đã là Vietnam time (+7), chỉ cần parse
-        const vietnamTime = new Date(transaction.timestamp);
-        
-        // Debug logs
-        console.log('Raw timestamp from API:', transaction.timestamp);
-        console.log('Parsed time:', vietnamTime);
-        console.log('Timestamp ISO:', vietnamTime.toISOString());
-        
+        const parsedTime = new Date(transaction.timestamp);
+
         return {
           ...transaction,
-          timestamp: vietnamTime,
-          formattedTime: vietnamTime.toLocaleString('vi-VN', {
-            timeZone: 'Asia/Ho_Chi_Minh',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
+          timestamp: parsedTime,
+          formattedTime: parsedTime.toLocaleString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
           }),
-          relativeTime: getRelativeTime(vietnamTime)
+          relativeTime: getRelativeTime(parsedTime)
         };
       });
       
