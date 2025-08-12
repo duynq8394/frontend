@@ -70,19 +70,21 @@ const Statistics = () => {
       setMonthlyData(processedMonthlyData);
       setTotalParked(response.data.totalParked || 0);
 
-      // Tính tổng số xe vào/ra
+      // Tính tổng số xe vào/ra dựa trên TRẠNG THÁI thay vì action
+      // Xe gửi: Số xe có trạng thái "Đang gửi" với ngày hôm nay
+      // Xe lấy: Số xe có trạng thái "Đã lấy" với ngày hôm nay
       const totalInCount = processedDailyData.reduce((sum, item) => {
-        const sendAction = item.actions && Array.isArray(item.actions)
-          ? item.actions.find((a) => a.action === 'Gửi')
+        const parkedStatus = item.statuses && Array.isArray(item.statuses)
+          ? item.statuses.find((s) => s.status === 'Đang gửi')
           : null;
-        return sum + (sendAction ? sendAction.count : 0);
+        return sum + (parkedStatus ? parkedStatus.count : 0);
       }, 0);
       
       const totalOutCount = processedDailyData.reduce((sum, item) => {
-        const retrieveAction = item.actions && Array.isArray(item.actions)
-          ? item.actions.find((a) => a.action === 'Lấy')
+        const retrievedStatus = item.statuses && Array.isArray(item.statuses)
+          ? item.statuses.find((s) => s.status === 'Đã lấy')
           : null;
-        return sum + (retrieveAction ? retrieveAction.count : 0);
+        return sum + (retrievedStatus ? retrievedStatus.count : 0);
       }, 0);
       
       setTotalIn(totalInCount);
@@ -121,10 +123,10 @@ const Statistics = () => {
       {
         label: 'Số xe gửi',
         data: dailyData.map((item) => {
-          const sendAction = item.actions && Array.isArray(item.actions)
-            ? item.actions.find((a) => a.action === 'Gửi')
+          const parkedStatus = item.statuses && Array.isArray(item.statuses)
+            ? item.statuses.find((s) => s.status === 'Đang gửi')
             : null;
-          return sendAction ? sendAction.count : 0;
+          return parkedStatus ? parkedStatus.count : 0;
         }),
         backgroundColor: '#1E40AF',
         borderColor: '#1E40AF',
@@ -134,10 +136,10 @@ const Statistics = () => {
       {
         label: 'Số xe lấy',
         data: dailyData.map((item) => {
-          const retrieveAction = item.actions && Array.isArray(item.actions)
-            ? item.actions.find((a) => a.action === 'Lấy')
+          const retrievedStatus = item.statuses && Array.isArray(item.statuses)
+            ? item.statuses.find((s) => s.status === 'Đã lấy')
             : null;
-          return retrieveAction ? retrieveAction.count : 0;
+          return retrievedStatus ? retrievedStatus.count : 0;
         }),
         backgroundColor: '#10B981',
         borderColor: '#10B981',
@@ -161,10 +163,10 @@ const Statistics = () => {
       {
         label: 'Số xe gửi',
         data: weeklyData.map((item) => {
-          const sendAction = item.actions && Array.isArray(item.actions)
-            ? item.actions.find((a) => a.action === 'Gửi')
+          const parkedStatus = item.statuses && Array.isArray(item.statuses)
+            ? item.statuses.find((s) => s.status === 'Đang gửi')
             : null;
-          return sendAction ? sendAction.count : 0;
+          return parkedStatus ? parkedStatus.count : 0;
         }),
         backgroundColor: '#F59E0B',
         borderColor: '#F59E0B',
@@ -174,10 +176,10 @@ const Statistics = () => {
       {
         label: 'Số xe lấy',
         data: weeklyData.map((item) => {
-          const retrieveAction = item.actions && Array.isArray(item.actions)
-            ? item.actions.find((a) => a.action === 'Lấy')
+          const retrievedStatus = item.statuses && Array.isArray(item.statuses)
+            ? item.statuses.find((s) => s.status === 'Đã lấy')
             : null;
-          return retrieveAction ? retrieveAction.count : 0;
+          return retrievedStatus ? retrievedStatus.count : 0;
         }),
         backgroundColor: '#EF4444',
         borderColor: '#EF4444',
@@ -201,10 +203,10 @@ const Statistics = () => {
       {
         label: 'Số xe gửi',
         data: monthlyData.map((item) => {
-          const sendAction = item.actions && Array.isArray(item.actions)
-            ? item.actions.find((a) => a.action === 'Gửi')
+          const parkedStatus = item.statuses && Array.isArray(item.statuses)
+            ? item.statuses.find((s) => s.status === 'Đang gửi')
             : null;
-          return sendAction ? sendAction.count : 0;
+          return parkedStatus ? parkedStatus.count : 0;
         }),
         backgroundColor: '#10B981',
         borderColor: '#10B981',
@@ -214,10 +216,10 @@ const Statistics = () => {
       {
         label: 'Số xe lấy',
         data: monthlyData.map((item) => {
-          const retrieveAction = item.actions && Array.isArray(item.actions)
-            ? item.actions.find((a) => a.action === 'Lấy')
+          const retrievedStatus = item.statuses && Array.isArray(item.statuses)
+            ? item.statuses.find((s) => s.status === 'Đã lấy')
             : null;
-          return retrieveAction ? retrieveAction.count : 0;
+          return retrievedStatus ? retrievedStatus.count : 0;
         }),
         backgroundColor: '#EF4444',
         borderColor: '#EF4444',
@@ -261,10 +263,10 @@ const Statistics = () => {
       {
         label: 'Xu hướng xe gửi',
         data: dailyData.map((item) => {
-          const sendAction = item.actions && Array.isArray(item.actions)
-            ? item.actions.find((a) => a.action === 'Gửi')
+          const parkedStatus = item.statuses && Array.isArray(item.statuses)
+            ? item.statuses.find((s) => s.status === 'Đang gửi')
             : null;
-          return sendAction ? sendAction.count : 0;
+          return parkedStatus ? parkedStatus.count : 0;
         }),
         borderColor: '#1E40AF',
         backgroundColor: 'rgba(30, 64, 175, 0.1)',
@@ -361,11 +363,11 @@ const Statistics = () => {
               <div className="text-4xl font-bold text-primary">{totalParked} xe</div>
             </div>
             <div className="text-center bg-green-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe vào hôm nay</h3>
+              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe gửi hôm nay</h3>
               <div className="text-4xl font-bold text-green-600">{totalIn} xe</div>
             </div>
             <div className="text-center bg-red-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe ra hôm nay</h3>
+              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe lấy hôm nay</h3>
               <div className="text-4xl font-bold text-red-600">{totalOut} xe</div>
             </div>
           </div>
@@ -484,10 +486,10 @@ const Statistics = () => {
             <h3 className="text-lg font-medium text-gray-700 mb-2 text-center">Thống kê theo khoảng thời gian</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
               <div className="bg-white p-3 rounded-lg">
-                <span className="text-green-600 font-medium">Tổng xe vào:</span> {totalIn} xe
+                <span className="text-green-600 font-medium">Tổng xe gửi:</span> {totalIn} xe
               </div>
               <div className="bg-white p-3 rounded-lg">
-                <span className="text-red-600 font-medium">Tổng xe ra:</span> {totalOut} xe
+                <span className="text-red-600 font-medium">Tổng xe lấy:</span> {totalOut} xe
               </div>
             </div>
           </div>
