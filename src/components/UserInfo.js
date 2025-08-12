@@ -57,9 +57,7 @@ const UserInfo = ({ userInfo, onAction, isLoading }) => {
               <p className="text-sm text-gray-600">
                 <span className="font-medium">Lịch sử gần nhất:</span>{' '}
                 {vehicle.lastTransaction.action} -{' '}
-                {new Date(vehicle.lastTransaction.timestamp).toLocaleString('vi-VN', {
-                  timeZone: 'Asia/Ho_Chi_Minh'
-                })}
+                {new Date(vehicle.lastTransaction.timestamp).toLocaleString()}
               </p>
             )}
             <div className="mt-4 flex justify-center space-x-4">
