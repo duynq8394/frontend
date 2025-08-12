@@ -48,6 +48,9 @@ const Statistics = () => {
       });
       
       console.log('API /statistics response:', response.data);
+      console.log('Daily data:', response.data.daily);
+      console.log('Weekly data:', response.data.weekly);
+      console.log('Monthly data:', response.data.monthly);
       
       // Xử lý dữ liệu với timezone +7
       const processedDailyData = (response.data.daily || []).map(item => ({
@@ -65,6 +68,10 @@ const Statistics = () => {
         _id: convertToVietnamTime(item._id)
       }));
 
+      console.log('Processed daily data:', processedDailyData);
+      console.log('Processed weekly data:', processedWeeklyData);
+      console.log('Processed monthly data:', processedMonthlyData);
+
       setDailyData(processedDailyData);
       setWeeklyData(processedWeeklyData);
       setMonthlyData(processedMonthlyData);
@@ -77,6 +84,7 @@ const Statistics = () => {
         const parkedStatus = item.statuses && Array.isArray(item.statuses)
           ? item.statuses.find((s) => s.status === 'Đang gửi')
           : null;
+        console.log(`Date: ${item._id}, Statuses:`, item.statuses, 'Found parked status:', parkedStatus);
         return sum + (parkedStatus ? parkedStatus.count : 0);
       }, 0);
       
@@ -84,8 +92,12 @@ const Statistics = () => {
         const retrievedStatus = item.statuses && Array.isArray(item.statuses)
           ? item.statuses.find((s) => s.status === 'Đã lấy')
           : null;
+        console.log(`Date: ${item._id}, Statuses:`, item.statuses, 'Found retrieved status:', retrievedStatus);
         return sum + (retrievedStatus ? retrievedStatus.count : 0);
       }, 0);
+      
+      console.log('Total In Count:', totalInCount);
+      console.log('Total Out Count:', totalOutCount);
       
       setTotalIn(totalInCount);
       setTotalOut(totalOutCount);
