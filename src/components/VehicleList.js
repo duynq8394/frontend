@@ -240,12 +240,9 @@ const VehicleList = ({ compact = false }) => {
     const parkedDate = new Date(timestamp);
     const currentDate = new Date();
     
-    // Chuyển đổi timezone sang Vietnam (+7)
-    const vietnamParkedDate = new Date(parkedDate.getTime() + (7 * 60 * 60 * 1000));
-    const vietnamCurrentDate = new Date(currentDate.getTime() + (7 * 60 * 60 * 1000));
-    
-    // Tính số ngày chênh lệch
-    const diffTime = Math.abs(vietnamCurrentDate - vietnamParkedDate);
+    // KHÔNG cần chuyển đổi timezone nữa vì backend đã lưu +7
+    // Tính số ngày chênh lệch trực tiếp
+    const diffTime = Math.abs(currentDate - parkedDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };

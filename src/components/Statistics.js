@@ -23,12 +23,11 @@ const Statistics = () => {
     fetchStatistics();
   }, [selectedPeriod]);
 
-  // Hàm chuyển đổi timezone từ UTC sang +7 (không cần thiết nữa vì backend đã lưu +7)
-  const convertToVietnamTime = (utcDate) => {
-    if (!utcDate) return new Date();
-    const date = new Date(utcDate);
+  // Hàm xử lý timestamp - KHÔNG chuyển đổi timezone nữa vì backend đã lưu +7
+  const processTimestamp = (timestamp) => {
+    if (!timestamp) return new Date();
     // Timestamp từ MongoDB đã là Vietnam time (+7), chỉ cần parse
-    return date;
+    return new Date(timestamp);
   };
 
   const fetchStatistics = async () => {
@@ -54,17 +53,17 @@ const Statistics = () => {
       // Xử lý dữ liệu với timezone +7
       const processedDailyData = (response.data.daily || []).map(item => ({
         ...item,
-        _id: convertToVietnamTime(item._id)
+        _id: processTimestamp(item._id)
       }));
       
       const processedWeeklyData = (response.data.weekly || []).map(item => ({
         ...item,
-        _id: convertToVietnamTime(item._id)
+        _id: processTimestamp(item._id)
       }));
       
       const processedMonthlyData = (response.data.monthly || []).map(item => ({
         ...item,
-        _id: convertToVietnamTime(item._id)
+        _id: processTimestamp(item._id)
       }));
 
       console.log('Processed daily data:', processedDailyData);
@@ -123,7 +122,7 @@ const Statistics = () => {
   // Tạo dữ liệu biểu đồ theo ngày
   const dailyChartData = {
     labels: dailyData.map((item) => {
-      const date = convertToVietnamTime(item._id);
+      const date = processTimestamp(item._id);
       return date.toLocaleDateString('vi-VN', { 
         day: '2-digit', 
         month: '2-digit',
@@ -163,7 +162,7 @@ const Statistics = () => {
   // Tạo dữ liệu biểu đồ theo tuần
   const weeklyChartData = {
     labels: weeklyData.map((item) => {
-      const date = convertToVietnamTime(item._id);
+      const date = processTimestamp(item._id);
       const weekStart = new Date(date);
       weekStart.setDate(date.getDate() - date.getDay());
       const weekEnd = new Date(weekStart);
@@ -203,7 +202,7 @@ const Statistics = () => {
   // Tạo dữ liệu biểu đồ theo tháng
   const monthlyChartData = {
     labels: monthlyData.map((item) => {
-      const date = convertToVietnamTime(item._id);
+      const date = processTimestamp(item._id);
       return date.toLocaleDateString('vi-VN', { 
         month: 'short', 
         year: '2-digit',
@@ -263,7 +262,7 @@ const Statistics = () => {
   // Tạo biểu đồ đường cho xu hướng
   const trendChartData = {
     labels: dailyData.map((item) => {
-      const date = convertToVietnamTime(item._id);
+      const date = processTimestamp(item._id);
       return date.toLocaleDateString('vi-VN', { 
         day: '2-digit', 
         month: '2-digit',
