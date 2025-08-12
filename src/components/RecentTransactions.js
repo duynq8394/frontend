@@ -37,13 +37,13 @@ const RecentTransactions = () => {
       
       // Xử lý dữ liệu với timezone +7 (chỉ một lần)
       const processedTransactions = response.data.transactions.map(transaction => {
-        // Timestamp từ MongoDB là UTC, chuyển sang Vietnam time (+7)
-        const vietnamTime = new Date(transaction.timestamp.getTime() + (7 * 60 * 60 * 1000));
+        // Timestamp từ MongoDB đã là Vietnam time (+7), không cần chuyển đổi nữa
+        const vietnamTime = new Date(transaction.timestamp);
         
         // Debug logs
         console.log('Raw timestamp from API:', transaction.timestamp);
-        console.log('Converted Vietnam time:', vietnamTime);
-        console.log('Original UTC time:', new Date(transaction.timestamp).toISOString());
+        console.log('Parsed Vietnam time:', vietnamTime);
+        console.log('Original timestamp ISO:', new Date(transaction.timestamp).toISOString());
         console.log('Vietnam time ISO:', vietnamTime.toISOString());
         
         return {

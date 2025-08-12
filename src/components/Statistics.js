@@ -23,13 +23,12 @@ const Statistics = () => {
     fetchStatistics();
   }, [selectedPeriod]);
 
-  // Hàm chuyển đổi timezone từ UTC sang +7
+  // Hàm chuyển đổi timezone từ UTC sang +7 (không cần thiết nữa vì backend đã lưu +7)
   const convertToVietnamTime = (utcDate) => {
     if (!utcDate) return new Date();
     const date = new Date(utcDate);
-    // Chuyển từ UTC sang Vietnam time (+7)
-    const vietnamTime = new Date(date.getTime() + (7 * 60 * 60 * 1000));
-    return vietnamTime;
+    // Timestamp từ MongoDB đã là Vietnam time (+7), chỉ cần parse
+    return date;
   };
 
   const fetchStatistics = async () => {
