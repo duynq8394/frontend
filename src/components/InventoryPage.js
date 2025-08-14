@@ -174,7 +174,7 @@ const InventoryPage = () => {
         console.log('Search response data:', data);
         setSearchResults(data.results);
         if (data.results.length === 0) {
-          setError('Không tìm thấy biển số xe nào có số cuối ' + searchDigits);
+          setError('Không tìm thấy biển số xe nào có số cuối ' + searchDigits + ' trong hệ thống');
         }
       } else {
         const errorData = await response.json();
@@ -284,7 +284,7 @@ const InventoryPage = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Kiểm Kê Biển Số Xe</h1>
-          <p className="text-gray-600">Quản lý và thực hiện kiểm kê biển số xe trong hệ thống</p>
+          <p className="text-gray-600">Quản lý và thực hiện kiểm kê biển số xe đang gửi trong bãi</p>
         </div>
 
         {/* Session Control */}
@@ -331,6 +331,7 @@ const InventoryPage = () => {
         {/* Search Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Tìm Kiếm Biển Số</h2>
+          <p className="text-gray-600 mb-4">Tìm kiếm xe trong hệ thống theo 4-5 số cuối biển số (tất cả trạng thái)</p>
           <div className="flex space-x-4 mb-4">
             <input
               type="text"
@@ -419,10 +420,11 @@ const InventoryPage = () => {
         {inventoryReport && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Báo Cáo Kiểm Kê</h2>
+            <p className="text-gray-600 mb-4">Thống kê xe đang gửi trong bãi</p>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-blue-50 p-4 rounded-lg text-center">
                 <div className="text-2xl font-bold text-blue-600">{inventoryReport.totalVehicles}</div>
-                <div className="text-sm text-blue-700">Tổng số xe</div>
+                <div className="text-sm text-blue-700">Tổng xe đang gửi</div>
               </div>
               <div className="bg-green-50 p-4 rounded-lg text-center">
                 <div className="text-2xl font-bold text-green-600">{inventoryReport.checkedVehicles}</div>
@@ -445,7 +447,7 @@ const InventoryPage = () => {
 
             {inventoryReport.uncheckedLicensePlates.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-3">Biển Số Chưa Kiểm Kê:</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Biển Số Đang Gửi Chưa Kiểm Kê:</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {inventoryReport.uncheckedLicensePlates.map((plate, index) => (
                     <div key={index} className="bg-red-100 text-red-800 px-3 py-2 rounded text-center text-sm font-medium">
@@ -522,7 +524,7 @@ const InventoryPage = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Kết Thúc Phiên Kiểm Kê</h3>
             <p className="text-gray-600 mb-6">
               Bạn có chắc chắn muốn kết thúc phiên kiểm kê "{currentSession?.sessionName}"? 
-              Hành động này sẽ tạo báo cáo tổng hợp và không thể hoàn tác.
+              Hệ thống sẽ tạo báo cáo so sánh với xe đang gửi trong bãi và không thể hoàn tác.
             </p>
             <div className="flex space-x-3">
               <button

@@ -73,7 +73,7 @@ const InventorySummary = () => {
             <span className="text-lg mr-3">🔍</span>
             <div>
               <div className="font-medium text-gray-900">Tìm kiếm biển số</div>
-              <div className="text-sm text-gray-600">Theo 4-5 số cuối</div>
+              <div className="text-sm text-gray-600">Tất cả trạng thái xe</div>
             </div>
           </div>
           <div className="text-green-600 font-medium">✓</div>
@@ -95,7 +95,7 @@ const InventorySummary = () => {
             <span className="text-lg mr-3">📊</span>
             <div>
               <div className="font-medium text-gray-900">Báo cáo tổng hợp</div>
-              <div className="text-sm text-gray-600">Thống kê chi tiết</div>
+              <div className="text-sm text-gray-600">So sánh với xe đang gửi</div>
             </div>
           </div>
           <div className="text-green-600 font-medium">✓</div>
@@ -105,8 +105,8 @@ const InventorySummary = () => {
       <div className="mt-6 p-4 bg-blue-50 rounded-lg">
         <h4 className="font-medium text-blue-900 mb-2">💡 Gợi ý sử dụng:</h4>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>• Sử dụng tab "Kiểm kê" để xem hướng dẫn chi tiết</li>
-          <li>• Click nút "Kiểm kê biển số" để mở trang chính</li>
+          <li>• Tìm kiếm tất cả xe trong hệ thống (mọi trạng thái)</li>
+          <li>• Báo cáo chỉ so sánh với xe đang gửi trong bãi</li>
           <li>• Mỗi phiên kiểm kê sẽ được lưu trữ riêng biệt</li>
           <li>• Có thể tạm dừng và tiếp tục phiên kiểm kê</li>
         </ul>
