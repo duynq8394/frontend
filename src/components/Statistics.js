@@ -151,7 +151,7 @@ const Statistics = () => {
     labels: dailyData.map((item) => createChartLabel(item, 'day')),
     datasets: [
       {
-        label: 'Số xe gửi',
+        label: 'Xe gửi mới',
         data: dailyData.map((item) => getStatusCount(item, 'Đang gửi')),
         backgroundColor: '#1E40AF',
         borderColor: '#1E40AF',
@@ -159,7 +159,7 @@ const Statistics = () => {
         tension: 0.4,
       },
       {
-        label: 'Số xe lấy',
+        label: 'Xe lấy',
         data: dailyData.map((item) => getStatusCount(item, 'Đã lấy')),
         backgroundColor: '#10B981',
         borderColor: '#10B981',
@@ -174,7 +174,7 @@ const Statistics = () => {
     labels: weeklyData.map((item) => createChartLabel(item, 'week')),
     datasets: [
       {
-        label: 'Số xe gửi',
+        label: 'Xe gửi mới',
         data: weeklyData.map((item) => getStatusCount(item, 'Đang gửi')),
         backgroundColor: '#F59E0B',
         borderColor: '#F59E0B',
@@ -182,7 +182,7 @@ const Statistics = () => {
         tension: 0.4,
       },
       {
-        label: 'Số xe lấy',
+        label: 'Xe lấy',
         data: weeklyData.map((item) => getStatusCount(item, 'Đã lấy')),
         backgroundColor: '#EF4444',
         borderColor: '#EF4444',
@@ -197,7 +197,7 @@ const Statistics = () => {
     labels: monthlyData.map((item) => createChartLabel(item, 'month')),
     datasets: [
       {
-        label: 'Số xe gửi',
+        label: 'Xe gửi mới',
         data: monthlyData.map((item) => getStatusCount(item, 'Đang gửi')),
         backgroundColor: '#10B981',
         borderColor: '#10B981',
@@ -205,7 +205,7 @@ const Statistics = () => {
         tension: 0.4,
       },
       {
-        label: 'Số xe lấy',
+        label: 'Xe lấy',
         data: monthlyData.map((item) => getStatusCount(item, 'Đã lấy')),
         backgroundColor: '#EF4444',
         borderColor: '#EF4444',
@@ -216,13 +216,13 @@ const Statistics = () => {
   };
 
   const summaryChartData = {
-    labels: ['Xe đang gửi', 'Xe gửi tháng này', 'Xe lấy tháng này'],
+    labels: ['Xe đang gửi', 'Xe gửi mới tháng này', 'Xe lấy tháng này'],
     datasets: [
       {
         data: [totalParked, totalIn, totalOut],
         backgroundColor: [
           '#F59E0B', // Vàng cho xe đang gửi
-          '#1E40AF', // Xanh dương cho xe gửi tháng này
+          '#1E40AF', // Xanh dương cho xe gửi mới tháng này
           '#10B981', // Xanh lá cho xe lấy tháng này
         ],
         borderColor: [
@@ -240,7 +240,7 @@ const Statistics = () => {
     labels: dailyData.map((item) => createChartLabel(item, 'day')),
     datasets: [
       {
-        label: 'Xu hướng xe gửi',
+        label: 'Xu hướng xe gửi mới',
         data: dailyData.map((item) => getStatusCount(item, 'Đang gửi')),
         borderColor: '#1E40AF',
         backgroundColor: 'rgba(30, 64, 175, 0.1)',
@@ -345,14 +345,17 @@ const Statistics = () => {
             <div className="text-center bg-blue-50 p-4 rounded-lg">
               <h3 className="text-lg font-medium text-gray-700 mb-2">Xe đang gửi</h3>
               <div className="text-4xl font-bold text-primary">{totalParked} xe</div>
+              <p className="text-sm text-gray-500 mt-1">Hiện tại trong bãi</p>
             </div>
             <div className="text-center bg-green-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe gửi tháng này</h3>
+              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe gửi mới tháng này</h3>
               <div className="text-4xl font-bold text-green-600">{totalIn} xe</div>
+              <p className="text-sm text-gray-500 mt-1">Giao dịch gửi xe mới</p>
             </div>
             <div className="text-center bg-red-50 p-4 rounded-lg">
               <h3 className="text-lg font-medium text-gray-700 mb-2">Xe lấy tháng này</h3>
               <div className="text-4xl font-bold text-red-600">{totalOut} xe</div>
+              <p className="text-sm text-gray-500 mt-1">Giao dịch lấy xe</p>
             </div>
           </div>
           
@@ -398,7 +401,7 @@ const Statistics = () => {
             </div>
 
             <div>
-              <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Xu hướng gửi xe</h3>
+              <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Xu hướng xe gửi mới</h3>
               <div className="h-64">
                 {hasData(dailyData) ? (
                   <Line
@@ -443,9 +446,9 @@ const Statistics = () => {
           {/* Biểu đồ theo thời gian được chọn */}
           <div>
             <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">
-              {selectedPeriod === 'day' ? 'Số xe gửi/lấy theo ngày' : 
-               selectedPeriod === 'week' ? 'Số xe gửi/lấy theo tuần' : 
-               'Số xe gửi/lấy theo tháng'}
+              {selectedPeriod === 'day' ? 'Số xe gửi mới/lấy theo ngày' : 
+               selectedPeriod === 'week' ? 'Số xe gửi mới/lấy theo tuần' : 
+               'Số xe gửi mới/lấy theo tháng'}
             </h3>
             {(() => {
               const currentData = selectedPeriod === 'day' ? dailyData : 
@@ -507,11 +510,16 @@ const Statistics = () => {
             <h3 className="text-lg font-medium text-gray-700 mb-2 text-center">Thống kê theo khoảng thời gian</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
               <div className="bg-white p-3 rounded-lg">
-                <span className="text-green-600 font-medium">Tổng xe gửi tháng này:</span> {totalIn} xe
+                <span className="text-green-600 font-medium">Xe gửi mới tháng này:</span> {totalIn} xe
               </div>
               <div className="bg-white p-3 rounded-lg">
-                <span className="text-red-600 font-medium">Tổng xe lấy tháng này:</span> {totalOut} xe
+                <span className="text-red-600 font-medium">Xe lấy tháng này:</span> {totalOut} xe
               </div>
+            </div>
+            <div className="mt-4 text-center text-sm text-gray-600">
+              <p>• <strong>Xe đang gửi:</strong> Số xe hiện tại đang trong bãi</p>
+              <p>• <strong>Xe gửi mới:</strong> Số giao dịch gửi xe mới trong tháng</p>
+              <p>• <strong>Xe lấy:</strong> Số giao dịch lấy xe trong tháng</p>
             </div>
             {!hasData(dailyData) && (
               <div className="text-center mt-4 text-gray-500">
