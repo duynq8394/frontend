@@ -20,6 +20,11 @@ const InventoryPage = () => {
     return localStorage.getItem('adminToken');
   };
 
+  // Lấy API URL từ environment
+  const getApiUrl = () => {
+    return process.env.REACT_APP_API_URL || '';
+  };
+
   // Kiểm tra xem có phiên kiểm kê đang hoạt động không
   useEffect(() => {
     checkActiveSession();
@@ -33,15 +38,24 @@ const InventoryPage = () => {
         return;
       }
 
-      const response = await fetch('/api/admin/inventory/sessions', {
+      const apiUrl = getApiUrl();
+      const fullUrl = `${apiUrl}/api/admin/inventory/sessions`;
+      
+      console.log('Checking active session with URL:', fullUrl);
+      console.log('API URL from env:', process.env.REACT_APP_API_URL);
+
+      const response = await fetch(fullUrl, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
+      console.log('Session check response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Session check response data:', data);
         const activeSession = data.sessions.find(s => s.status === 'active');
         if (activeSession) {
           setCurrentSession(activeSession);
@@ -56,7 +70,7 @@ const InventoryPage = () => {
   const loadSessionRecords = async (sessionId) => {
     try {
       const token = getAuthToken();
-      const response = await fetch(`/api/admin/inventory/session/${sessionId}`, {
+      const response = await fetch(`${getApiUrl()}/api/admin/inventory/session/${sessionId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -82,7 +96,13 @@ const InventoryPage = () => {
       setError('');
 
       const token = getAuthToken();
-      const response = await fetch('/api/admin/inventory/start', {
+      const apiUrl = getApiUrl();
+      const fullUrl = `${apiUrl}/api/admin/inventory/start`;
+      
+      console.log('Starting new session with URL:', fullUrl);
+      console.log('API URL from env:', process.env.REACT_APP_API_URL);
+
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -94,8 +114,11 @@ const InventoryPage = () => {
         })
       });
 
+      console.log('Start session response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Start session response data:', data);
         setCurrentSession({
           _id: data.sessionId,
           sessionName: sessionName || `Kiểm kê ${new Date().toLocaleDateString('vi-VN')}`,
@@ -112,6 +135,7 @@ const InventoryPage = () => {
         setError(errorData.error || 'Lỗi khởi tạo phiên kiểm kê');
       }
     } catch (error) {
+      console.error('Start session error:', error);
       setError('Lỗi kết nối server');
     } finally {
       setIsLoading(false);
@@ -129,15 +153,25 @@ const InventoryPage = () => {
       setError('');
 
       const token = getAuthToken();
-      const response = await fetch(`/api/admin/inventory/search-license-plate/${searchDigits}`, {
+      const apiUrl = getApiUrl();
+      const fullUrl = `${apiUrl}/api/admin/inventory/search-license-plate/${searchDigits}`;
+      
+      console.log('Searching with URL:', fullUrl);
+      console.log('API URL from env:', process.env.REACT_APP_API_URL);
+      
+      const response = await fetch(fullUrl, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
+      console.log('Search response status:', response.status);
+      console.log('Search response headers:', response.headers);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Search response data:', data);
         setSearchResults(data.results);
         if (data.results.length === 0) {
           setError('Không tìm thấy biển số xe nào có số cuối ' + searchDigits);
@@ -147,6 +181,7 @@ const InventoryPage = () => {
         setError(errorData.error || 'Lỗi tìm kiếm');
       }
     } catch (error) {
+      console.error('Search error:', error);
       setError('Lỗi kết nối server');
     } finally {
       setIsLoading(false);
@@ -164,7 +199,7 @@ const InventoryPage = () => {
       setError('');
 
       const token = getAuthToken();
-      const response = await fetch('/api/admin/inventory/check', {
+      const response = await fetch(`${getApiUrl()}/api/admin/inventory/check`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -215,7 +250,7 @@ const InventoryPage = () => {
       setError('');
 
       const token = getAuthToken();
-      const response = await fetch(`/api/admin/inventory/end/${currentSession._id}`, {
+      const response = await fetch(`${getApiUrl()}/api/admin/inventory/end/${currentSession._id}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

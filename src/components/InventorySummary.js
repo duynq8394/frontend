@@ -14,15 +14,24 @@ const InventorySummary = () => {
       const token = localStorage.getItem('adminToken');
       if (!token) return;
 
-      const response = await fetch('/api/admin/inventory/sessions', {
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      const fullUrl = `${apiUrl}/api/admin/inventory/sessions`;
+      
+      console.log('Fetching inventory stats with URL:', fullUrl);
+      console.log('API URL from env:', process.env.REACT_APP_API_URL);
+
+      const response = await fetch(fullUrl, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+            'Content-Type': 'application/json'
         }
       });
 
+      console.log('Inventory stats response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('Inventory stats response data:', data);
         const active = data.sessions.filter(s => s.status === 'active').length;
         setActiveSessions(active);
         setTotalSessions(data.sessions.length);
