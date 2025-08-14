@@ -23,11 +23,13 @@ const Statistics = () => {
     fetchStatistics();
   }, [selectedPeriod]);
 
-  // Hàm xử lý timestamp - KHÔNG chuyển đổi timezone nữa vì backend đã lưu +7
+  // Hàm xử lý timestamp - chuyển đổi từ UTC sang Vietnam time (+7)
   const processTimestamp = (timestamp) => {
     if (!timestamp) return new Date();
-    // Timestamp từ MongoDB đã là Vietnam time (+7), chỉ cần parse
-    return new Date(timestamp);
+    // Chuyển đổi từ UTC sang Vietnam time (+7)
+    const date = new Date(timestamp);
+    const vietnamTime = new Date(date.getTime() + (7 * 60 * 60 * 1000));
+    return vietnamTime;
   };
 
   const fetchStatistics = async () => {
@@ -46,24 +48,21 @@ const Statistics = () => {
       });
       
       console.log('API /statistics response:', response.data);
-      console.log('Daily data:', response.data.daily);
-      console.log('Weekly data:', response.data.weekly);
-      console.log('Monthly data:', response.data.monthly);
       
       // Xử lý dữ liệu với timezone +7
       const processedDailyData = (response.data.daily || []).map(item => ({
         ...item,
-        _id: processTimestamp(item._id)
+        _id: new Date(item._id + 'T00:00:00.000Z') // Chuyển đổi string date thành Date object
       }));
       
       const processedWeeklyData = (response.data.weekly || []).map(item => ({
         ...item,
-        _id: processTimestamp(item._id)
+        _id: item._id // Giữ nguyên format tuần
       }));
       
       const processedMonthlyData = (response.data.monthly || []).map(item => ({
         ...item,
-        _id: processTimestamp(item._id)
+        _id: new Date(item._id + '-01T00:00:00.000Z') // Chuyển đổi string month thành Date object
       }));
 
       console.log('Processed daily data:', processedDailyData);
@@ -75,27 +74,12 @@ const Statistics = () => {
       setMonthlyData(processedMonthlyData);
       setTotalParked(response.data.totalParked || 0);
 
-      // Tính tổng số xe vào/ra dựa trên TRẠNG THÁI thay vì action
-      // Xe gửi: Số xe có trạng thái "Đang gửi" với ngày hôm nay
-      // Xe lấy: Số xe có trạng thái "Đã lấy" với ngày hôm nay
-      const totalInCount = processedDailyData.reduce((sum, item) => {
-        const parkedStatus = item.statuses && Array.isArray(item.statuses)
-          ? item.statuses.find((s) => s.status === 'Đang gửi')
-          : null;
-        console.log(`Date: ${item._id}, Statuses:`, item.statuses, 'Found parked status:', parkedStatus);
-        return sum + (parkedStatus ? parkedStatus.count : 0);
-      }, 0);
+      // Sử dụng dữ liệu từ backend thay vì tính toán lại
+      const totalInCount = response.data.totalInMonth || 0;
+      const totalOutCount = response.data.totalOutMonth || 0;
       
-      const totalOutCount = processedDailyData.reduce((sum, item) => {
-        const retrievedStatus = item.statuses && Array.isArray(item.statuses)
-          ? item.statuses.find((s) => s.status === 'Đã lấy')
-          : null;
-        console.log(`Date: ${item._id}, Statuses:`, item.statuses, 'Found retrieved status:', retrievedStatus);
-        return sum + (retrievedStatus ? retrievedStatus.count : 0);
-      }, 0);
-      
-      console.log('Total In Count:', totalInCount);
-      console.log('Total Out Count:', totalOutCount);
+      console.log('Total In Count (from backend):', totalInCount);
+      console.log('Total Out Count (from backend):', totalOutCount);
       
       setTotalIn(totalInCount);
       setTotalOut(totalOutCount);
@@ -119,25 +103,56 @@ const Statistics = () => {
     setSelectedPeriod(period);
   };
 
+  // Hàm helper để lấy số lượng xe theo trạng thái
+  const getStatusCount = (item, targetStatus) => {
+    if (!item.statuses || !Array.isArray(item.statuses)) return 0;
+    const statusItem = item.statuses.find(s => s.status === targetStatus);
+    return statusItem ? statusItem.count : 0;
+  };
+
+  // Hàm helper để kiểm tra xem có dữ liệu hay không
+  const hasData = (data) => {
+    return data && Array.isArray(data) && data.length > 0;
+  };
+
+  // Hàm helper để tạo label cho biểu đồ
+  const createChartLabel = (item, period) => {
+    if (period === 'week') {
+      return item._id; // Giữ nguyên format tuần từ backend
+    }
+    
+    try {
+      const date = new Date(item._id);
+      if (isNaN(date.getTime())) {
+        return item._id; // Fallback nếu không parse được date
+      }
+      
+      if (period === 'day') {
+        return date.toLocaleDateString('vi-VN', { 
+          day: '2-digit', 
+          month: '2-digit'
+        });
+      } else if (period === 'month') {
+        return date.toLocaleDateString('vi-VN', { 
+          month: 'short', 
+          year: '2-digit'
+        });
+      }
+    } catch (error) {
+      console.error('Error creating chart label:', error);
+      return item._id;
+    }
+    
+    return item._id;
+  };
+
   // Tạo dữ liệu biểu đồ theo ngày
   const dailyChartData = {
-    labels: dailyData.map((item) => {
-      const date = processTimestamp(item._id);
-      return date.toLocaleDateString('vi-VN', { 
-        day: '2-digit', 
-        month: '2-digit',
-        timeZone: 'Asia/Ho_Chi_Minh'
-      });
-    }),
+    labels: dailyData.map((item) => createChartLabel(item, 'day')),
     datasets: [
       {
         label: 'Số xe gửi',
-        data: dailyData.map((item) => {
-          const parkedStatus = item.statuses && Array.isArray(item.statuses)
-            ? item.statuses.find((s) => s.status === 'Đang gửi')
-            : null;
-          return parkedStatus ? parkedStatus.count : 0;
-        }),
+        data: dailyData.map((item) => getStatusCount(item, 'Đang gửi')),
         backgroundColor: '#1E40AF',
         borderColor: '#1E40AF',
         borderWidth: 2,
@@ -145,12 +160,7 @@ const Statistics = () => {
       },
       {
         label: 'Số xe lấy',
-        data: dailyData.map((item) => {
-          const retrievedStatus = item.statuses && Array.isArray(item.statuses)
-            ? item.statuses.find((s) => s.status === 'Đã lấy')
-            : null;
-          return retrievedStatus ? retrievedStatus.count : 0;
-        }),
+        data: dailyData.map((item) => getStatusCount(item, 'Đã lấy')),
         backgroundColor: '#10B981',
         borderColor: '#10B981',
         borderWidth: 2,
@@ -161,23 +171,11 @@ const Statistics = () => {
 
   // Tạo dữ liệu biểu đồ theo tuần
   const weeklyChartData = {
-    labels: weeklyData.map((item) => {
-      const date = processTimestamp(item._id);
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay());
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      return `${weekStart.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} - ${weekEnd.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}`;
-    }),
+    labels: weeklyData.map((item) => createChartLabel(item, 'week')),
     datasets: [
       {
         label: 'Số xe gửi',
-        data: weeklyData.map((item) => {
-          const parkedStatus = item.statuses && Array.isArray(item.statuses)
-            ? item.statuses.find((s) => s.status === 'Đang gửi')
-            : null;
-          return parkedStatus ? parkedStatus.count : 0;
-        }),
+        data: weeklyData.map((item) => getStatusCount(item, 'Đang gửi')),
         backgroundColor: '#F59E0B',
         borderColor: '#F59E0B',
         borderWidth: 2,
@@ -185,12 +183,7 @@ const Statistics = () => {
       },
       {
         label: 'Số xe lấy',
-        data: weeklyData.map((item) => {
-          const retrievedStatus = item.statuses && Array.isArray(item.statuses)
-            ? item.statuses.find((s) => s.status === 'Đã lấy')
-            : null;
-          return retrievedStatus ? retrievedStatus.count : 0;
-        }),
+        data: weeklyData.map((item) => getStatusCount(item, 'Đã lấy')),
         backgroundColor: '#EF4444',
         borderColor: '#EF4444',
         borderWidth: 2,
@@ -201,23 +194,11 @@ const Statistics = () => {
 
   // Tạo dữ liệu biểu đồ theo tháng
   const monthlyChartData = {
-    labels: monthlyData.map((item) => {
-      const date = processTimestamp(item._id);
-      return date.toLocaleDateString('vi-VN', { 
-        month: 'short', 
-        year: '2-digit',
-        timeZone: 'Asia/Ho_Chi_Minh'
-      });
-    }),
+    labels: monthlyData.map((item) => createChartLabel(item, 'month')),
     datasets: [
       {
         label: 'Số xe gửi',
-        data: monthlyData.map((item) => {
-          const parkedStatus = item.statuses && Array.isArray(item.statuses)
-            ? item.statuses.find((s) => s.status === 'Đang gửi')
-            : null;
-          return parkedStatus ? parkedStatus.count : 0;
-        }),
+        data: monthlyData.map((item) => getStatusCount(item, 'Đang gửi')),
         backgroundColor: '#10B981',
         borderColor: '#10B981',
         borderWidth: 2,
@@ -225,12 +206,7 @@ const Statistics = () => {
       },
       {
         label: 'Số xe lấy',
-        data: monthlyData.map((item) => {
-          const retrievedStatus = item.statuses && Array.isArray(item.statuses)
-            ? item.statuses.find((s) => s.status === 'Đã lấy')
-            : null;
-          return retrievedStatus ? retrievedStatus.count : 0;
-        }),
+        data: monthlyData.map((item) => getStatusCount(item, 'Đã lấy')),
         backgroundColor: '#EF4444',
         borderColor: '#EF4444',
         borderWidth: 2,
@@ -240,19 +216,19 @@ const Statistics = () => {
   };
 
   const summaryChartData = {
-    labels: ['Xe đang gửi', 'Xe đã lấy hôm nay', 'Tổng giao dịch hôm nay'],
+    labels: ['Xe đang gửi', 'Xe gửi tháng này', 'Xe lấy tháng này'],
     datasets: [
       {
-        data: [totalParked, totalOut, totalIn + totalOut],
+        data: [totalParked, totalIn, totalOut],
         backgroundColor: [
           '#F59E0B', // Vàng cho xe đang gửi
-          '#10B981', // Xanh lá cho xe đã lấy
-          '#3B82F6', // Xanh dương cho tổng giao dịch
+          '#1E40AF', // Xanh dương cho xe gửi tháng này
+          '#10B981', // Xanh lá cho xe lấy tháng này
         ],
         borderColor: [
           '#D97706',
+          '#1E40AF',
           '#059669',
-          '#2563EB',
         ],
         borderWidth: 2,
       },
@@ -261,23 +237,11 @@ const Statistics = () => {
 
   // Tạo biểu đồ đường cho xu hướng
   const trendChartData = {
-    labels: dailyData.map((item) => {
-      const date = processTimestamp(item._id);
-      return date.toLocaleDateString('vi-VN', { 
-        day: '2-digit', 
-        month: '2-digit',
-        timeZone: 'Asia/Ho_Chi_Minh'
-      });
-    }),
+    labels: dailyData.map((item) => createChartLabel(item, 'day')),
     datasets: [
       {
         label: 'Xu hướng xe gửi',
-        data: dailyData.map((item) => {
-          const parkedStatus = item.statuses && Array.isArray(item.statuses)
-            ? item.statuses.find((s) => s.status === 'Đang gửi')
-            : null;
-          return parkedStatus ? parkedStatus.count : 0;
-        }),
+        data: dailyData.map((item) => getStatusCount(item, 'Đang gửi')),
         borderColor: '#1E40AF',
         backgroundColor: 'rgba(30, 64, 175, 0.1)',
         borderWidth: 3,
@@ -290,6 +254,10 @@ const Statistics = () => {
       },
     ],
   };
+
+  // Kiểm tra xem có dữ liệu để hiển thị hay không
+  const hasAnyData = totalParked > 0 || totalIn > 0 || totalOut > 0 || 
+                     hasData(dailyData) || hasData(weeklyData) || hasData(monthlyData);
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-6xl mx-auto">
@@ -364,6 +332,12 @@ const Statistics = () => {
             />
           </svg>
         </div>
+      ) : !hasAnyData ? (
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">📊</div>
+          <h3 className="text-xl font-medium text-gray-700 mb-2">Chưa có dữ liệu thống kê</h3>
+          <p className="text-gray-500">Hãy thực hiện một số giao dịch gửi/lấy xe để xem thống kê</p>
+        </div>
       ) : (
         <div className="space-y-8">
           {/* Thống kê tổng quan */}
@@ -373,14 +347,20 @@ const Statistics = () => {
               <div className="text-4xl font-bold text-primary">{totalParked} xe</div>
             </div>
             <div className="text-center bg-green-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe gửi hôm nay</h3>
+              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe gửi tháng này</h3>
               <div className="text-4xl font-bold text-green-600">{totalIn} xe</div>
             </div>
             <div className="text-center bg-red-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe lấy hôm nay</h3>
+              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe lấy tháng này</h3>
               <div className="text-4xl font-bold text-red-600">{totalOut} xe</div>
             </div>
           </div>
+          
+          {totalParked === 0 && totalIn === 0 && totalOut === 0 && (
+            <div className="text-center py-4 text-gray-500 bg-gray-50 rounded-lg">
+              Chưa có dữ liệu giao dịch nào trong hệ thống
+            </div>
+          )}
 
           {/* Biểu đồ tròn tổng quan */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -388,25 +368,31 @@ const Statistics = () => {
               <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Tổng quan hoạt động</h3>
               <div className="flex justify-center">
                 <div className="w-64 h-64">
-                  <Doughnut
-                    data={summaryChartData}
-                    options={{
-                      responsive: true,
-                      maintainAspectRatio: false,
-                      plugins: {
-                        legend: { position: 'bottom' },
-                        tooltip: {
-                          callbacks: {
-                            label: function(context) {
-                              const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                              const percentage = ((context.parsed / total) * 100).toFixed(1);
-                              return `${context.label}: ${context.parsed} (${percentage}%)`;
+                  {totalParked > 0 || totalIn > 0 || totalOut > 0 ? (
+                    <Doughnut
+                      data={summaryChartData}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { position: 'bottom' },
+                          tooltip: {
+                            callbacks: {
+                              label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((context.parsed / total) * 100).toFixed(1) : 0;
+                                return `${context.label}: ${context.parsed} (${percentage}%)`;
+                              }
                             }
                           }
                         }
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-500">
+                      Không có dữ liệu hoạt động
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -414,36 +400,42 @@ const Statistics = () => {
             <div>
               <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Xu hướng gửi xe</h3>
               <div className="h-64">
-                <Line
-                  data={trendChartData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { position: 'top' },
-                      title: { display: false },
-                    },
-                    scales: {
-                      y: { 
-                        beginAtZero: true,
-                        title: {
-                          display: true,
-                          text: 'Số lượng xe'
+                {hasData(dailyData) ? (
+                  <Line
+                    data={trendChartData}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                        legend: { position: 'top' },
+                        title: { display: false },
+                      },
+                      scales: {
+                        y: { 
+                          beginAtZero: true,
+                          title: {
+                            display: true,
+                            text: 'Số lượng xe'
+                          }
+                        },
+                        x: {
+                          title: {
+                            display: true,
+                            text: 'Ngày'
+                          }
                         }
                       },
-                      x: {
-                        title: {
-                          display: true,
-                          text: 'Ngày'
-                        }
+                      interaction: {
+                        intersect: false,
+                        mode: 'index'
                       }
-                    },
-                    interaction: {
-                      intersect: false,
-                      mode: 'index'
-                    }
-                  }}
-                />
+                    }}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    Không có dữ liệu xu hướng
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -455,40 +447,59 @@ const Statistics = () => {
                selectedPeriod === 'week' ? 'Số xe gửi/lấy theo tuần' : 
                'Số xe gửi/lấy theo tháng'}
             </h3>
-            <Bar
-              data={selectedPeriod === 'day' ? dailyChartData : 
-                    selectedPeriod === 'week' ? weeklyChartData : 
-                    monthlyChartData}
-              options={{
-                responsive: true,
-                plugins: {
-                  legend: { position: 'top' },
-                  title: { display: false },
-                },
-                scales: {
-                  x: { 
-                    stacked: false,
-                    title: {
-                      display: true,
-                      text: selectedPeriod === 'day' ? 'Ngày' : 
-                             selectedPeriod === 'week' ? 'Tuần' : 'Tháng'
+            {(() => {
+              const currentData = selectedPeriod === 'day' ? dailyData : 
+                                 selectedPeriod === 'week' ? weeklyData : 
+                                 monthlyData;
+              
+              if (!hasData(currentData)) {
+                return (
+                  <div className="text-center py-8 text-gray-500">
+                    Không có dữ liệu cho {selectedPeriod === 'day' ? 'ngày' : 
+                                        selectedPeriod === 'week' ? 'tuần' : 'tháng'} này
+                  </div>
+                );
+              }
+              
+              const chartData = selectedPeriod === 'day' ? dailyChartData : 
+                               selectedPeriod === 'week' ? weeklyChartData : 
+                               monthlyChartData;
+              
+              return (
+                <Bar
+                  data={chartData}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: { position: 'top' },
+                      title: { display: false },
+                    },
+                    scales: {
+                      x: { 
+                        stacked: false,
+                        title: {
+                          display: true,
+                          text: selectedPeriod === 'day' ? 'Ngày' : 
+                                 selectedPeriod === 'week' ? 'Tuần' : 'Tháng'
+                        }
+                      },
+                      y: { 
+                        stacked: false, 
+                        beginAtZero: true,
+                        title: {
+                          display: true,
+                          text: 'Số lượng xe'
+                        }
+                      },
+                    },
+                    interaction: {
+                      intersect: false,
+                      mode: 'index'
                     }
-                  },
-                  y: { 
-                    stacked: false, 
-                    beginAtZero: true,
-                    title: {
-                      display: true,
-                      text: 'Số lượng xe'
-                    }
-                  },
-                },
-                interaction: {
-                  intersect: false,
-                  mode: 'index'
-                }
-              }}
-            />
+                  }}
+                />
+              );
+            })()}
           </div>
 
           {/* Thông tin bổ sung */}
@@ -496,18 +507,23 @@ const Statistics = () => {
             <h3 className="text-lg font-medium text-gray-700 mb-2 text-center">Thống kê theo khoảng thời gian</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
               <div className="bg-white p-3 rounded-lg">
-                <span className="text-green-600 font-medium">Tổng xe gửi:</span> {totalIn} xe
+                <span className="text-green-600 font-medium">Tổng xe gửi tháng này:</span> {totalIn} xe
               </div>
               <div className="bg-white p-3 rounded-lg">
-                <span className="text-red-600 font-medium">Tổng xe lấy:</span> {totalOut} xe
+                <span className="text-red-600 font-medium">Tổng xe lấy tháng này:</span> {totalOut} xe
               </div>
             </div>
+            {!hasData(dailyData) && (
+              <div className="text-center mt-4 text-gray-500">
+                Không có dữ liệu giao dịch trong tháng này
+              </div>
+            )}
           </div>
         </div>
       )}
       <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
-};
-
+  };
+  
 export default Statistics;
