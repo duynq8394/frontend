@@ -6,6 +6,7 @@ import Statistics from './Statistics';
 import AddUser from './AddUser';
 import DashboardCards from './DashboardCards';
 import UserManagement from './UserManagement';
+import InventorySummary from './InventorySummary';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -38,6 +39,7 @@ const AdminDashboard = () => {
     { id: 'vehicles', name: 'Quản lý xe', icon: '🚗' },
     { id: 'users', name: 'Quản lý người dùng', icon: '👥' },
     { id: 'statistics', name: 'Thống kê', icon: '📈' },
+    { id: 'inventory', name: 'Kiểm kê', icon: '🔍' },
   ];
 
   return (
@@ -56,6 +58,13 @@ const AdminDashboard = () => {
               >
                 <span className="mr-2">➕</span>
                 Thêm người dùng
+              </button>
+              <button
+                onClick={() => navigate('/admin/inventory')}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                <span className="mr-2">🔍</span>
+                Kiểm kê biển số
               </button>
               <button
                 onClick={handleLogout}
@@ -107,7 +116,7 @@ const AdminDashboard = () => {
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Thống kê tổng quan</h3>
                 <DashboardCards />
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Thống kê xe vào/ra</h3>
                   <Statistics />
@@ -115,6 +124,10 @@ const AdminDashboard = () => {
                 <div className="bg-white rounded-lg shadow p-6">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Danh sách xe gần đây</h3>
                   <VehicleListCompact />
+                </div>
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Thống kê kiểm kê</h3>
+                  <InventorySummary />
                 </div>
               </div>
             </div>
@@ -135,6 +148,47 @@ const AdminDashboard = () => {
           {activeTab === 'statistics' && (
             <div>
               <Statistics fullView={true} />
+            </div>
+          )}
+
+          {activeTab === 'inventory' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Quản Lý Kiểm Kê Biển Số Xe</h3>
+                <p className="text-gray-600 mb-6">
+                  Chức năng kiểm kê cho phép bạn tìm kiếm và ghi nhận các biển số xe trong hệ thống.
+                  Mỗi lần kiểm kê sẽ được ghi nhận với bộ đếm tăng dần.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2">Tính năng chính:</h4>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• Tìm kiếm biển số theo 4-5 số cuối</li>
+                      <li>• Ghi nhận kiểm kê với bộ đếm</li>
+                      <li>• Quản lý phiên kiểm kê</li>
+                      <li>• Báo cáo tổng hợp</li>
+                    </ul>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-green-900 mb-2">Hướng dẫn sử dụng:</h4>
+                    <ul className="text-sm text-green-800 space-y-1">
+                      <li>• Bắt đầu phiên kiểm kê mới</li>
+                      <li>• Tìm kiếm và chọn biển số</li>
+                      <li>• Kết thúc để xem báo cáo</li>
+                      <li>• Xuất danh sách chưa kiểm kê</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="mt-6">
+                  <button
+                    onClick={() => navigate('/admin/inventory')}
+                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                  >
+                    <span className="mr-2">🔍</span>
+                    Mở Trang Kiểm Kê
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
