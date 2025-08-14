@@ -7,7 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement, PointElement, LineElement);
 
-const Statistics = () => {
+const Statistics = ({ fullView = false }) => {
   const [dailyData, setDailyData] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
@@ -22,15 +22,6 @@ const Statistics = () => {
   useEffect(() => {
     fetchStatistics();
   }, [selectedPeriod]);
-
-  // Hàm xử lý timestamp - chuyển đổi từ UTC sang Vietnam time (+7)
-  const processTimestamp = (timestamp) => {
-    if (!timestamp) return new Date();
-    // Chuyển đổi từ UTC sang Vietnam time (+7)
-    const date = new Date(timestamp);
-    const vietnamTime = new Date(date.getTime() + (7 * 60 * 60 * 1000));
-    return vietnamTime;
-  };
 
   const fetchStatistics = async () => {
     setIsLoading(true);
@@ -49,42 +40,14 @@ const Statistics = () => {
       
       console.log('API /statistics response:', response.data);
       
-      // Xử lý dữ liệu với timezone +7
-      const processedDailyData = (response.data.daily || []).map(item => ({
-        ...item,
-        _id: new Date(item._id + 'T00:00:00.000Z') // Chuyển đổi string date thành Date object
-      }));
-      
-      const processedWeeklyData = (response.data.weekly || []).map(item => ({
-        ...item,
-        _id: item._id // Giữ nguyên format tuần
-      }));
-      
-      const processedMonthlyData = (response.data.monthly || []).map(item => ({
-        ...item,
-        _id: new Date(item._id + '-01T00:00:00.000Z') // Chuyển đổi string month thành Date object
-      }));
-
-      console.log('Processed daily data:', processedDailyData);
-      console.log('Processed weekly data:', processedWeeklyData);
-      console.log('Processed monthly data:', processedMonthlyData);
-
-      setDailyData(processedDailyData);
-      setWeeklyData(processedWeeklyData);
-      setMonthlyData(processedMonthlyData);
+      setDailyData(response.data.daily || []);
+      setWeeklyData(response.data.weekly || []);
+      setMonthlyData(response.data.monthly || []);
       setTotalParked(response.data.totalParked || 0);
+      setTotalIn(response.data.totalIn || 0);
+      setTotalOut(response.data.totalOut || 0);
 
-      // Sử dụng dữ liệu từ backend thay vì tính toán lại
-      const totalInCount = response.data.totalInMonth || 0;
-      const totalOutCount = response.data.totalOutMonth || 0;
-      
-      console.log('Total In Count (from backend):', totalInCount);
-      console.log('Total Out Count (from backend):', totalOutCount);
-      
-      setTotalIn(totalInCount);
-      setTotalOut(totalOutCount);
-
-      if (totalInCount === 0 && totalOutCount === 0 && (startDate || endDate)) {
+      if (response.data.totalIn === 0 && response.data.totalOut === 0 && (startDate || endDate)) {
         toast.info('Không có dữ liệu giao dịch trong khoảng thời gian này.');
       }
     } catch (err) {
@@ -101,6 +64,12 @@ const Statistics = () => {
 
   const handlePeriodChange = (period) => {
     setSelectedPeriod(period);
+  };
+
+  const handleClearFilter = () => {
+    setStartDate('');
+    setEndDate('');
+    fetchStatistics();
   };
 
   // Hàm helper để lấy số lượng xe theo trạng thái
@@ -151,18 +120,18 @@ const Statistics = () => {
     labels: dailyData.map((item) => createChartLabel(item, 'day')),
     datasets: [
       {
-        label: 'Xe gửi mới',
+        label: 'Xe vào',
         data: dailyData.map((item) => getStatusCount(item, 'Đang gửi')),
-        backgroundColor: '#1E40AF',
-        borderColor: '#1E40AF',
+        backgroundColor: '#10B981',
+        borderColor: '#10B981',
         borderWidth: 2,
         tension: 0.4,
       },
       {
-        label: 'Xe lấy',
+        label: 'Xe ra',
         data: dailyData.map((item) => getStatusCount(item, 'Đã lấy')),
-        backgroundColor: '#10B981',
-        borderColor: '#10B981',
+        backgroundColor: '#EF4444',
+        borderColor: '#EF4444',
         borderWidth: 2,
         tension: 0.4,
       },
@@ -174,18 +143,18 @@ const Statistics = () => {
     labels: weeklyData.map((item) => createChartLabel(item, 'week')),
     datasets: [
       {
-        label: 'Xe gửi mới',
+        label: 'Xe vào',
         data: weeklyData.map((item) => getStatusCount(item, 'Đang gửi')),
-        backgroundColor: '#F59E0B',
-        borderColor: '#F59E0B',
+        backgroundColor: '#3B82F6',
+        borderColor: '#3B82F6',
         borderWidth: 2,
         tension: 0.4,
       },
       {
-        label: 'Xe lấy',
+        label: 'Xe ra',
         data: weeklyData.map((item) => getStatusCount(item, 'Đã lấy')),
-        backgroundColor: '#EF4444',
-        borderColor: '#EF4444',
+        backgroundColor: '#F59E0B',
+        borderColor: '#F59E0B',
         borderWidth: 2,
         tension: 0.4,
       },
@@ -197,18 +166,18 @@ const Statistics = () => {
     labels: monthlyData.map((item) => createChartLabel(item, 'month')),
     datasets: [
       {
-        label: 'Xe gửi mới',
+        label: 'Xe vào',
         data: monthlyData.map((item) => getStatusCount(item, 'Đang gửi')),
-        backgroundColor: '#10B981',
-        borderColor: '#10B981',
+        backgroundColor: '#8B5CF6',
+        borderColor: '#8B5CF6',
         borderWidth: 2,
         tension: 0.4,
       },
       {
-        label: 'Xe lấy',
+        label: 'Xe ra',
         data: monthlyData.map((item) => getStatusCount(item, 'Đã lấy')),
-        backgroundColor: '#EF4444',
-        borderColor: '#EF4444',
+        backgroundColor: '#EC4899',
+        borderColor: '#EC4899',
         borderWidth: 2,
         tension: 0.4,
       },
@@ -216,19 +185,19 @@ const Statistics = () => {
   };
 
   const summaryChartData = {
-    labels: ['Xe đang gửi', 'Xe gửi mới tháng này', 'Xe lấy tháng này'],
+    labels: ['Xe đang gửi', 'Xe vào', 'Xe ra'],
     datasets: [
       {
         data: [totalParked, totalIn, totalOut],
         backgroundColor: [
           '#F59E0B', // Vàng cho xe đang gửi
-          '#1E40AF', // Xanh dương cho xe gửi mới tháng này
-          '#10B981', // Xanh lá cho xe lấy tháng này
+          '#10B981', // Xanh lá cho xe vào
+          '#EF4444', // Đỏ cho xe ra
         ],
         borderColor: [
           '#D97706',
-          '#1E40AF',
           '#059669',
+          '#DC2626',
         ],
         borderWidth: 2,
       },
@@ -240,14 +209,27 @@ const Statistics = () => {
     labels: dailyData.map((item) => createChartLabel(item, 'day')),
     datasets: [
       {
-        label: 'Xu hướng xe gửi mới',
+        label: 'Xu hướng xe vào',
         data: dailyData.map((item) => getStatusCount(item, 'Đang gửi')),
-        borderColor: '#1E40AF',
-        backgroundColor: 'rgba(30, 64, 175, 0.1)',
+        borderColor: '#10B981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
         borderWidth: 3,
         tension: 0.4,
         fill: true,
-        pointBackgroundColor: '#1E40AF',
+        pointBackgroundColor: '#10B981',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 6,
+      },
+      {
+        label: 'Xu hướng xe ra',
+        data: dailyData.map((item) => getStatusCount(item, 'Đã lấy')),
+        borderColor: '#EF4444',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderWidth: 3,
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#EF4444',
         pointBorderColor: '#ffffff',
         pointBorderWidth: 2,
         pointRadius: 6,
@@ -260,70 +242,92 @@ const Statistics = () => {
                      hasData(dailyData) || hasData(weeklyData) || hasData(monthlyData);
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 max-w-6xl mx-auto">
-      <h2 className="text-2xl font-semibold text-primary mb-6 text-center">Thống kê gửi/lấy xe</h2>
+    <div className={fullView ? "bg-white rounded-lg shadow-lg p-6 max-w-7xl mx-auto" : "w-full"}>
+      <h2 className={`font-semibold text-primary text-center ${fullView ? "text-2xl mb-6" : "text-xl mb-4"}`}>
+        Thống kê xe vào/ra
+      </h2>
       
       {/* Bộ lọc thời gian */}
-      <div className="mb-6">
-        <div className="flex flex-wrap gap-2 mb-4 justify-center">
+      <div className={fullView ? "mb-6" : "mb-4"}>
+        <div className={`flex flex-wrap gap-2 justify-center ${fullView ? "mb-4" : "mb-3"}`}>
           <button
             onClick={() => handlePeriodChange('day')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`rounded-lg transition-colors ${
               selectedPeriod === 'day' 
                 ? 'bg-primary text-white' 
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            } ${fullView ? "px-4 py-2" : "px-3 py-1 text-sm"}`}
           >
             Ngày
           </button>
           <button
             onClick={() => handlePeriodChange('week')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`rounded-lg transition-colors ${
               selectedPeriod === 'week' 
                 ? 'bg-primary text-white' 
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            } ${fullView ? "px-4 py-2" : "px-3 py-1 text-sm"}`}
           >
             Tuần
           </button>
           <button
             onClick={() => handlePeriodChange('month')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`rounded-lg transition-colors ${
               selectedPeriod === 'month' 
                 ? 'bg-primary text-white' 
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            } ${fullView ? "px-4 py-2" : "px-3 py-1 text-sm"}`}
           >
             Tháng
           </button>
         </div>
         
-        <form onSubmit={handleFilter} className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 justify-center">
+        <form onSubmit={handleFilter} className={`flex flex-col sm:flex-row justify-center ${
+          fullView ? "space-y-3 sm:space-y-0 sm:space-x-4" : "space-y-2 sm:space-y-0 sm:space-x-3"
+        }`}>
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="p-2 border rounded-lg focus:ring-primary focus:border-primary"
+            className={`border rounded-lg focus:ring-primary focus:border-primary ${
+              fullView ? "p-2" : "p-1 text-sm"
+            }`}
+            placeholder="Từ ngày"
           />
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="p-2 border rounded-lg focus:ring-primary focus:border-primary"
+            className={`border rounded-lg focus:ring-primary focus:border-primary ${
+              fullView ? "p-2" : "p-1 text-sm"
+            }`}
+            placeholder="Đến ngày"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className={`bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors ${
+              fullView ? "px-4 py-2" : "px-3 py-1 text-sm"
+            }`}
             disabled={isLoading}
           >
             Lọc
+          </button>
+          <button
+            type="button"
+            onClick={handleClearFilter}
+            className={`bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors ${
+              fullView ? "px-4 py-2" : "px-3 py-1 text-sm"
+            }`}
+            disabled={isLoading}
+          >
+            Xóa lọc
           </button>
         </form>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center">
-          <svg className="animate-spin h-8 w-8 text-primary" viewBox="0 0 24 24">
+          <svg className={`animate-spin text-primary ${fullView ? "h-8 w-8" : "h-6 w-6"}`} viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path
               className="opacity-75"
@@ -333,44 +337,50 @@ const Statistics = () => {
           </svg>
         </div>
       ) : !hasAnyData ? (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">📊</div>
-          <h3 className="text-xl font-medium text-gray-700 mb-2">Chưa có dữ liệu thống kê</h3>
-          <p className="text-gray-500">Hãy thực hiện một số giao dịch gửi/lấy xe để xem thống kê</p>
+        <div className={`text-center ${fullView ? "py-12" : "py-6"}`}>
+          <div className={`mb-4 ${fullView ? "text-6xl" : "text-4xl"}`}>📊</div>
+          <h3 className={`font-medium text-gray-700 mb-2 ${fullView ? "text-xl" : "text-lg"}`}>
+            Chưa có dữ liệu thống kê
+          </h3>
+          <p className={`text-gray-500 ${fullView ? "" : "text-sm"}`}>
+            Hãy thực hiện một số giao dịch gửi/lấy xe để xem thống kê
+          </p>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className={fullView ? "space-y-8" : "space-y-4"}>
           {/* Thống kê tổng quan */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center bg-blue-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe đang gửi</h3>
-              <div className="text-4xl font-bold text-primary">{totalParked} xe</div>
-              <p className="text-sm text-gray-500 mt-1">Hiện tại trong bãi</p>
+          <div className={`grid gap-6 ${fullView ? "grid-cols-1 md:grid-cols-3" : "grid-cols-3 gap-3"}`}>
+            <div className={`text-center bg-blue-50 rounded-lg ${fullView ? "p-4" : "p-3"}`}>
+              <h3 className={`font-medium text-gray-700 mb-2 ${fullView ? "text-lg" : "text-sm"}`}>Xe đang gửi</h3>
+              <div className={`font-bold text-primary ${fullView ? "text-4xl" : "text-2xl"}`}>{totalParked} xe</div>
+              <p className={`text-gray-500 mt-1 ${fullView ? "text-sm" : "text-xs"}`}>
+                {fullView ? "Hiện tại trong bãi" : "Hiện tại"}
+              </p>
             </div>
-            <div className="text-center bg-green-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe gửi mới tháng này</h3>
-              <div className="text-4xl font-bold text-green-600">{totalIn} xe</div>
-              <p className="text-sm text-gray-500 mt-1">Giao dịch gửi xe mới</p>
+            <div className={`text-center bg-green-50 rounded-lg ${fullView ? "p-4" : "p-3"}`}>
+              <h3 className={`font-medium text-gray-700 mb-2 ${fullView ? "text-lg" : "text-sm"}`}>Xe vào</h3>
+              <div className={`font-bold text-green-600 ${fullView ? "text-4xl" : "text-2xl"}`}>{totalIn} xe</div>
+              <p className={`text-gray-500 mt-1 ${fullView ? "text-sm" : "text-xs"}`}>
+                {fullView ? "Trong khoảng thời gian" : "Khoảng thời gian"}
+              </p>
             </div>
-            <div className="text-center bg-red-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-700 mb-2">Xe lấy tháng này</h3>
-              <div className="text-4xl font-bold text-red-600">{totalOut} xe</div>
-              <p className="text-sm text-gray-500 mt-1">Giao dịch lấy xe</p>
+            <div className={`text-center bg-red-50 rounded-lg ${fullView ? "p-4" : "p-3"}`}>
+              <h3 className={`font-medium text-gray-700 mb-2 ${fullView ? "text-lg" : "text-sm"}`}>Xe ra</h3>
+              <div className={`font-bold text-red-600 ${fullView ? "text-4xl" : "text-2xl"}`}>{totalOut} xe</div>
+              <p className={`text-gray-500 mt-1 ${fullView ? "text-sm" : "text-xs"}`}>
+                {fullView ? "Trong khoảng thời gian" : "Khoảng thời gian"}
+              </p>
             </div>
           </div>
-          
-          {totalParked === 0 && totalIn === 0 && totalOut === 0 && (
-            <div className="text-center py-4 text-gray-500 bg-gray-50 rounded-lg">
-              Chưa có dữ liệu giao dịch nào trong hệ thống
-            </div>
-          )}
 
           {/* Biểu đồ tròn tổng quan */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className={`grid gap-8 ${fullView ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1 lg:grid-cols-2 gap-4"}`}>
             <div>
-              <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Tổng quan hoạt động</h3>
+              <h3 className={`font-medium text-gray-700 mb-4 text-center ${fullView ? "text-lg" : "text-sm"}`}>
+                Tổng quan hoạt động
+              </h3>
               <div className="flex justify-center">
-                <div className="w-64 h-64">
+                <div className={fullView ? "w-64 h-64" : "w-48 h-48"}>
                   {totalParked > 0 || totalIn > 0 || totalOut > 0 ? (
                     <Doughnut
                       data={summaryChartData}
@@ -378,7 +388,10 @@ const Statistics = () => {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                          legend: { position: 'bottom' },
+                          legend: { 
+                            position: 'bottom', 
+                            labels: { font: { size: fullView ? 12 : 10 } } 
+                          },
                           tooltip: {
                             callbacks: {
                               label: function(context) {
@@ -392,8 +405,8 @@ const Statistics = () => {
                       }}
                     />
                   ) : (
-                    <div className="flex items-center justify-center h-full text-gray-500">
-                      Không có dữ liệu hoạt động
+                    <div className={`flex items-center justify-center h-full text-gray-500 ${fullView ? "" : "text-sm"}`}>
+                      {fullView ? "Không có dữ liệu hoạt động" : "Không có dữ liệu"}
                     </div>
                   )}
                 </div>
@@ -401,8 +414,10 @@ const Statistics = () => {
             </div>
 
             <div>
-              <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">Xu hướng xe gửi mới</h3>
-              <div className="h-64">
+              <h3 className={`font-medium text-gray-700 mb-4 text-center ${fullView ? "text-lg" : "text-sm"}`}>
+                Xu hướng xe vào/ra
+              </h3>
+              <div className={fullView ? "h-64" : "h-48"}>
                 {hasData(dailyData) ? (
                   <Line
                     data={trendChartData}
@@ -410,7 +425,10 @@ const Statistics = () => {
                       responsive: true,
                       maintainAspectRatio: false,
                       plugins: {
-                        legend: { position: 'top' },
+                        legend: { 
+                          position: 'top', 
+                          labels: { font: { size: fullView ? 12 : 10 } } 
+                        },
                         title: { display: false },
                       },
                       scales: {
@@ -418,14 +436,18 @@ const Statistics = () => {
                           beginAtZero: true,
                           title: {
                             display: true,
-                            text: 'Số lượng xe'
-                          }
+                            text: 'Số lượng xe',
+                            font: { size: fullView ? 12 : 10 }
+                          },
+                          ticks: { font: { size: fullView ? 12 : 10 } }
                         },
                         x: {
                           title: {
                             display: true,
-                            text: 'Ngày'
-                          }
+                            text: 'Ngày',
+                            font: { size: fullView ? 12 : 10 }
+                          },
+                          ticks: { font: { size: fullView ? 12 : 10 } }
                         }
                       },
                       interaction: {
@@ -435,7 +457,7 @@ const Statistics = () => {
                     }}
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
+                  <div className={`flex items-center justify-center h-full text-gray-500 ${fullView ? "" : "text-sm"}`}>
                     Không có dữ liệu xu hướng
                   </div>
                 )}
@@ -445,10 +467,10 @@ const Statistics = () => {
 
           {/* Biểu đồ theo thời gian được chọn */}
           <div>
-            <h3 className="text-lg font-medium text-gray-700 mb-4 text-center">
-              {selectedPeriod === 'day' ? 'Số xe gửi mới/lấy theo ngày' : 
-               selectedPeriod === 'week' ? 'Số xe gửi mới/lấy theo tuần' : 
-               'Số xe gửi mới/lấy theo tháng'}
+            <h3 className={`font-medium text-gray-700 mb-4 text-center ${fullView ? "text-lg" : "text-sm"}`}>
+              {selectedPeriod === 'day' ? 'Số xe vào/ra theo ngày' : 
+               selectedPeriod === 'week' ? 'Số xe vào/ra theo tuần' : 
+               'Số xe vào/ra theo tháng'}
             </h3>
             {(() => {
               const currentData = selectedPeriod === 'day' ? dailyData : 
@@ -457,7 +479,7 @@ const Statistics = () => {
               
               if (!hasData(currentData)) {
                 return (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className={`text-center text-gray-500 ${fullView ? "py-8" : "py-4"} ${fullView ? "" : "text-sm"}`}>
                     Không có dữ liệu cho {selectedPeriod === 'day' ? 'ngày' : 
                                         selectedPeriod === 'week' ? 'tuần' : 'tháng'} này
                   </div>
@@ -469,69 +491,84 @@ const Statistics = () => {
                                monthlyChartData;
               
               return (
-                <Bar
-                  data={chartData}
-                  options={{
-                    responsive: true,
-                    plugins: {
-                      legend: { position: 'top' },
-                      title: { display: false },
-                    },
-                    scales: {
-                      x: { 
-                        stacked: false,
-                        title: {
-                          display: true,
-                          text: selectedPeriod === 'day' ? 'Ngày' : 
-                                 selectedPeriod === 'week' ? 'Tuần' : 'Tháng'
-                        }
+                <div className={fullView ? "" : "h-64"}>
+                  <Bar
+                    data={chartData}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: !fullView,
+                      plugins: {
+                        legend: { 
+                          position: 'top', 
+                          labels: { font: { size: fullView ? 12 : 10 } } 
+                        },
+                        title: { display: false },
                       },
-                      y: { 
-                        stacked: false, 
-                        beginAtZero: true,
-                        title: {
-                          display: true,
-                          text: 'Số lượng xe'
-                        }
+                      scales: {
+                        x: { 
+                          stacked: false,
+                          title: {
+                            display: true,
+                            text: selectedPeriod === 'day' ? 'Ngày' : 
+                                   selectedPeriod === 'week' ? 'Tuần' : 'Tháng',
+                            font: { size: fullView ? 12 : 10 }
+                          },
+                          ticks: { font: { size: fullView ? 12 : 10 } }
+                        },
+                        y: { 
+                          stacked: false, 
+                          beginAtZero: true,
+                          title: {
+                            display: true,
+                            text: 'Số lượng xe',
+                            font: { size: fullView ? 12 : 10 }
+                          },
+                          ticks: { font: { size: fullView ? 12 : 10 } }
+                        },
                       },
-                    },
-                    interaction: {
-                      intersect: false,
-                      mode: 'index'
-                    }
-                  }}
-                />
+                      interaction: {
+                        intersect: false,
+                        mode: 'index'
+                      }
+                    }}
+                  />
+                </div>
               );
             })()}
           </div>
 
-          {/* Thông tin bổ sung */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-lg font-medium text-gray-700 mb-2 text-center">Thống kê theo khoảng thời gian</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-center">
-              <div className="bg-white p-3 rounded-lg">
-                <span className="text-green-600 font-medium">Xe gửi mới tháng này:</span> {totalIn} xe
+          {/* Thông tin bổ sung - chỉ hiển thị trong full view */}
+          {fullView && (
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium text-gray-700 mb-2 text-center">Thông tin thống kê</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <div className="bg-white p-3 rounded-lg">
+                  <span className="text-blue-600 font-medium">Xe đang gửi:</span> {totalParked} xe
+                </div>
+                <div className="bg-white p-3 rounded-lg">
+                  <span className="text-green-600 font-medium">Xe vào:</span> {totalIn} xe
+                </div>
+                <div className="bg-white p-3 rounded-lg">
+                  <span className="text-red-600 font-medium">Xe ra:</span> {totalOut} xe
+                </div>
               </div>
-              <div className="bg-white p-3 rounded-lg">
-                <span className="text-red-600 font-medium">Xe lấy tháng này:</span> {totalOut} xe
+              <div className="mt-4 text-center text-sm text-gray-600">
+                <p>• <strong>Xe đang gửi:</strong> Số xe hiện tại đang trong bãi</p>
+                <p>• <strong>Xe vào:</strong> Số giao dịch gửi xe trong khoảng thời gian</p>
+                <p>• <strong>Xe ra:</strong> Số giao dịch lấy xe trong khoảng thời gian</p>
               </div>
+              {!hasData(dailyData) && (
+                <div className="text-center mt-4 text-gray-500">
+                  Không có dữ liệu giao dịch trong khoảng thời gian này
+                </div>
+              )}
             </div>
-            <div className="mt-4 text-center text-sm text-gray-600">
-              <p>• <strong>Xe đang gửi:</strong> Số xe hiện tại đang trong bãi</p>
-              <p>• <strong>Xe gửi mới:</strong> Số giao dịch gửi xe mới trong tháng</p>
-              <p>• <strong>Xe lấy:</strong> Số giao dịch lấy xe trong tháng</p>
-            </div>
-            {!hasData(dailyData) && (
-              <div className="text-center mt-4 text-gray-500">
-                Không có dữ liệu giao dịch trong tháng này
-              </div>
-            )}
-          </div>
+          )}
         </div>
       )}
       <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
-  };
-  
-export default Statistics;
+};
+
+export default Statistics; 
